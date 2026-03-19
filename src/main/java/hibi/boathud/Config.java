@@ -36,6 +36,22 @@ public class Config {
 	/** Setting a value that's not between 0 and 2 *will* cause an IndexOutOfBounds */
 	public static int barType = 0;
 
+	// Minimap settings
+	/** Controls whether or not the minimap should be displayed. */
+	public static boolean minimapEnabled = true;
+	/** X position of the minimap. */
+	public static int minimapX = 10;
+	/** Y position of the minimap. */
+	public static int minimapY = 10;
+	/** Scale of the minimap. */
+	public static double minimapScale = 1.0d;
+	/** Y-axis offset for the minimap. */
+	public static int minimapYOffset = 0;
+	/** Whether the minimap should be square. */
+	public static boolean minimapSquare = false;
+	/** Whether the minimap should lock to north or follow player rotation. */
+	public static boolean minimapLockNorth = true;
+
 	private Config() {}
 
 	/**
@@ -63,6 +79,28 @@ public class Config {
 			if(prop.get("speedUnit") instanceof String val) {
 				setUnit(Integer.parseInt(val));
 			}
+			// Minimap settings
+			if(prop.get("minimapEnabled") instanceof String val) {
+				minimapEnabled = Boolean.parseBoolean(val);
+			}
+			if(prop.get("minimapX") instanceof String val) {
+				minimapX = Integer.parseInt(val);
+			}
+			if(prop.get("minimapY") instanceof String val) {
+				minimapY = Integer.parseInt(val);
+			}
+			if(prop.get("minimapScale") instanceof String val) {
+				minimapScale = Double.parseDouble(val);
+			}
+			if(prop.get("minimapYOffset") instanceof String val) {
+				minimapYOffset = Integer.parseInt(val);
+			}
+			if(prop.get("minimapSquare") instanceof String val) {
+				minimapSquare = Boolean.parseBoolean(val);
+			}
+			if(prop.get("minimapLockNorth") instanceof String val) {
+				minimapLockNorth = Boolean.parseBoolean(val);
+			}
 		}
 		catch (Exception e) {
 			// Empty catch block
@@ -84,6 +122,14 @@ public class Config {
 			writer.write("extended " + Boolean.toString(extended) + "\n");
 			writer.write("barType " + Integer.toString(barType) + "\n");
 			writer.write("speedUnit " + Integer.toString(configSpeedType) + "\n");
+			// Minimap settings
+			writer.write("minimapEnabled " + Boolean.toString(minimapEnabled) + "\n");
+			writer.write("minimapX " + Integer.toString(minimapX) + "\n");
+			writer.write("minimapY " + Integer.toString(minimapY) + "\n");
+			writer.write("minimapScale " + Double.toString(minimapScale) + "\n");
+			writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
+			writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
+			writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
 			writer.close();
 		}
 		catch (Exception e) {

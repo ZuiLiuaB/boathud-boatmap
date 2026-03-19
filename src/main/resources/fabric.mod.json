@@ -3,8 +3,8 @@
     "id": "boathud",
     "version": "${version}",
 
-    "name": "BoatHud",
-    "description": "This mod adds a racing style HUD, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
+    "name": "BoatMap",
+    "description": "This mod adds a racing style HUD and Map, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
     "authors": [
         "hibi"
     ],

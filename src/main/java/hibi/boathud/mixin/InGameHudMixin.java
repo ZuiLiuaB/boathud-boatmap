@@ -23,8 +23,12 @@ public class InGameHudMixin {
 		)
 	)
 	public void render(DrawContext graphics, RenderTickCounter counter, CallbackInfo info) {
+		// Render main HUD if enabled and riding boat
 		if(Config.enabled && Common.ridingBoat && !(Common.client.currentScreen instanceof ChatScreen)) {
 			Common.hudRenderer.render(graphics, counter);
+		} else if(Config.minimapEnabled && !(Common.client.currentScreen instanceof ChatScreen)) {
+			// Render only minimap if enabled and not in chat screen
+			Common.hudRenderer.renderMinimap(graphics);
 		}
 	}
 }

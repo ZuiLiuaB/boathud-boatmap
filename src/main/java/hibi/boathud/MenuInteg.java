@@ -41,6 +41,49 @@ public class MenuInteg implements ModMenuApi {
 					.setTooltip(TIP_BAR, TIP_BAR_PACKED, TIP_BAR_MIXED, TIP_BAR_BLUE)
 					.setSaveConsumer(newVal -> Config.barType = newVal.ordinal())
 					.setEnumNameProvider(value -> Text.translatable("boathud.option.bar_type." + value.toString()))
+					.build())
+
+				// Minimap settings
+				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_ENABLED, Config.minimapEnabled)
+					.setDefaultValue(true)
+					.setSaveConsumer(newVal -> Config.minimapEnabled = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startIntField(MINIMAP_X, Config.minimapX)
+					.setDefaultValue(10)
+					.setMin(0)
+					.setSaveConsumer(newVal -> Config.minimapX = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startIntField(MINIMAP_Y, Config.minimapY)
+					.setDefaultValue(10)
+					.setMin(0)
+					.setSaveConsumer(newVal -> Config.minimapY = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startDoubleField(MINIMAP_SCALE, Config.minimapScale)
+					.setDefaultValue(1.0d)
+					.setMin(0.1d)
+					.setMax(5.0d)
+					.setSaveConsumer(newVal -> Config.minimapScale = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startIntField(MINIMAP_Y_OFFSET, Config.minimapYOffset)
+					.setDefaultValue(0)
+					.setMin(-100)
+					.setMax(100)
+					.setSaveConsumer(newVal -> Config.minimapYOffset = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SQUARE, Config.minimapSquare)
+					.setDefaultValue(false)
+					.setSaveConsumer(newVal -> Config.minimapSquare = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LOCK_NORTH, Config.minimapLockNorth)
+					.setDefaultValue(true)
+					.setTooltip(TIP_MINIMAP_LOCK_NORTH)
+					.setSaveConsumer(newVal -> Config.minimapLockNorth = newVal)
 					.build());
 
 			builder.setSavingRunnable(() -> Config.save());
@@ -62,6 +105,14 @@ public class MenuInteg implements ModMenuApi {
 		EXTENDED = Text.translatable("boathud.option.extended"),
 		BAR_TYPE = Text.translatable("boathud.option.bar_type"),
 		SPEED_FORMAT = Text.translatable("boathud.option.speed_format"),
+		MINIMAP_ENABLED = Text.translatable("boathud.option.minimap_enabled"),
+		MINIMAP_X = Text.translatable("boathud.option.minimap_x"),
+		MINIMAP_Y = Text.translatable("boathud.option.minimap_y"),
+		MINIMAP_SCALE = Text.translatable("boathud.option.minimap_scale"),
+		MINIMAP_Y_OFFSET = Text.translatable("boathud.option.minimap_y_offset"),
+		MINIMAP_SQUARE = Text.translatable("boathud.option.minimap_square"),
+		MINIMAP_LOCK_NORTH = Text.translatable("boathud.option.minimap_lock_north"),
+		TIP_MINIMAP_LOCK_NORTH = Text.translatable("boathud.tooltip.minimap_lock_north"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),
 		TIP_BAR_PACKED = Text.translatable("boathud.tooltip.bar_type.packed"),

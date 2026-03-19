@@ -5,7 +5,12 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.BlockState;
 
 public class HudRenderer {
 
@@ -69,6 +74,93 @@ public class HudRenderer {
 			this.typeCentered(graphics, String.format(Config.speedFormat, this.displayedSpeed * Config.speedRate), i - 58, this.scaledHeight - 76, 0xFFFFFF);
 			this.typeCentered(graphics, String.format(Config.angleFormat, Common.hudData.driftAngle), i + 58, this.scaledHeight - 76, 0xFFFFFF);
 		}
+
+		// Render minimap if enabled (it will be rendered separately by the mixin if not riding boat)
+		if(Config.minimapEnabled) {
+			this.renderMinimap(graphics);
+		}
+	}
+
+	/** Renders the minimap showing ice blocks */
+	public void renderMinimap(DrawContext graphics) {
+		if(this.client.player == null || this.client.world == null) return;
+
+		int minimapSize = 128;
+		int halfSize = minimapSize / 2;
+		int renderDistance = 16; // Blocks to render around the player
+
+		// Get player position and rotation
+		Vec3d playerPos = this.client.player.getPos();
+		BlockPos playerBlockPos = this.client.player.getBlockPos();
+		float playerYaw = this.client.player.getYaw();
+
+		// Calculate minimap position
+		int posX = Config.minimapX;
+		int posY = Config.minimapY;
+		double scale = Config.minimapScale;
+
+		// Calculate actual rendered size
+		int renderedSize = (int)(minimapSize * scale);
+		int renderedHalfSize = renderedSize / 2;
+
+		// Draw minimap background
+		graphics.fill(posX, posY, posX + renderedSize, posY + renderedSize, 0x40000000);
+
+		// Calculate rotation angle (0 if locked to north, -yaw if following player)
+		double rotationRad = Config.minimapLockNorth ? 0 : Math.toRadians(-playerYaw);
+		double cos = Config.minimapLockNorth ? 1 : Math.cos(rotationRad);
+		double sin = Config.minimapLockNorth ? 0 : Math.sin(rotationRad);
+
+		// Iterate through nearby blocks
+		for(int x = -renderDistance; x <= renderDistance; x++) {
+			for(int z = -renderDistance; z <= renderDistance; z++) {
+				BlockPos blockPos = playerBlockPos.add(x, Config.minimapYOffset, z);
+				BlockState blockState = this.client.world.getBlockState(blockPos);
+				Block block = blockState.getBlock();
+
+				// Check if it's an ice block we want to render
+				if(block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE) {
+					// Calculate relative position with sub-block precision
+					double relX = (x + 0.5) + (playerPos.x - playerBlockPos.getX());
+					double relZ = (z + 0.5) + (playerPos.z - playerBlockPos.getZ());
+
+					// Apply rotation if not locked to north
+					double rotatedX = relX * cos - relZ * sin;
+					double rotatedZ = relX * sin + relZ * cos;
+
+					// Calculate distance from player
+					double distance = Math.sqrt(rotatedX * rotatedX + rotatedZ * rotatedZ);
+					if(distance > renderDistance) continue;
+
+					// Calculate screen position with double precision
+					double screenX = posX + renderedHalfSize + (rotatedX * (renderedHalfSize / (double)renderDistance));
+					double screenZ = posY + renderedHalfSize + (rotatedZ * (renderedHalfSize / (double)renderDistance));
+
+					// Calculate Y difference for transparency
+					int yDiff = Math.abs(blockPos.getY() - playerBlockPos.getY());
+					float alpha = 1.0f - (yDiff / 10.0f);
+					alpha = MathHelper.clamp(alpha, 0.1f, 1.0f);
+
+					// Set color with transparency
+					int color = (int)(alpha * 255) << 24 | 0xFFFFFF;
+
+					// Draw the block as a filled rectangle connecting to neighbors
+					double blockSize = scale; // Use scale directly for better size control
+					int blockPixelSize = (int)Math.ceil(blockSize);
+					graphics.fill((int)(screenX - blockPixelSize / 2.0), (int)(screenZ - blockPixelSize / 2.0), 
+					              (int)(screenX + blockPixelSize / 2.0), (int)(screenZ + blockPixelSize / 2.0), color);
+				}
+			}
+		}
+
+		// Draw player indicator
+		graphics.fill(posX + renderedHalfSize - 2, posY + renderedHalfSize - 2, posX + renderedHalfSize + 2, posY + renderedHalfSize + 2, 0xFFFF0000);
+
+		// Draw minimap border
+		graphics.fill(posX, posY, posX + renderedSize, posY + 1, 0xFFFFFFFF); // Top
+		graphics.fill(posX, posY + renderedSize - 1, posX + renderedSize, posY + renderedSize, 0xFFFFFFFF); // Bottom
+		graphics.fill(posX, posY, posX + 1, posY + renderedSize, 0xFFFFFFFF); // Left
+		graphics.fill(posX + renderedSize - 1, posY, posX + renderedSize, posY + renderedSize, 0xFFFFFFFF); // Right
 	}
 
 	/** Renders the speed bar atop the HUD, uses displayedSpeed to, well, diisplay the speed. */
@@ -76,7 +168,7 @@ public class HudRenderer {
 		graphics.drawGuiTexture(RenderLayer::getGuiTextured, BAR_OFF[Config.barType], x, y, 182, 5);
 		if(Common.hudData.speed < MIN_V[Config.barType]) return;
 		if(Common.hudData.speed > MAX_V[Config.barType]) {
-			if(this.client.world.getTime() % 2 == 0) return;
+			if(this.client.world != null && this.client.world.getTime() % 2 == 0) return;
 			graphics.drawGuiTexture(RenderLayer::getGuiTextured, BAR_ON[Config.barType], x, y, 182, 5);
 			return;
 		}

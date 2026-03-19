@@ -19,8 +19,13 @@ public class Common implements ClientModInitializer {
 		Config.load();
 		ClientTickEvents.END_WORLD_TICK.register(clientWorld -> {
 			if(client.player == null) return;
+			// Initialize hudData if not already done
+			if(hudData == null) {
+				hudData = new HudData();
+			}
 			if(client.player.getVehicle() instanceof AbstractBoatEntity boat && boat.getFirstPassenger() == client.player) {
 				hudData.update();
+				ridingBoat = true;
 			}
 			else {
 				ridingBoat = false;
