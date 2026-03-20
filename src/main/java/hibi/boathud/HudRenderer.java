@@ -119,30 +119,16 @@ public class HudRenderer {
 		BlockPos playerBlockPos = cameraEntity.getBlockPos();
 		float playerYaw = cameraEntity.getYaw();
 
-		// Check if cache needs update with improved conditions
-		boolean positionChanged = lastRenderedPos == null || 
-			!lastRenderedPos.equals(playerBlockPos) ||
-			lastRenderedY != playerBlockPos.getY();
-		
-		// Only update map if player has moved a significant distance
-		// This reduces unnecessary rendering when player is stationary
-		boolean shouldUpdate = positionChanged;
-
-		// Pre-render map to array if needed
-		if(shouldUpdate) {
-			preRenderMinimap(playerBlockPos);
-			lastRenderedPos = playerBlockPos;
-			lastRenderedY = playerBlockPos.getY();
-			minimapCache.needsUpdate = true;
-		}
+		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
+		preRenderMinimap(playerBlockPos);
 
 		// Calculate minimap position
 		int posX = Config.minimapX;
 		int posY = Config.minimapY;
-		double scale = Config.minimapScale;
+		double scale = 1.0d; // Fixed scale, no longer configurable
 
 		// Calculate actual rendered size
-		int renderedSize = (int)(minimapSize * scale);
+		int renderedSize = (int)(Config.minimapSize * scale);
 		int renderedHalfSize = renderedSize / 2;
 
 		// Calculate center position
@@ -191,9 +177,9 @@ public class HudRenderer {
 		// Draw ice blocks with rotation applied, only within circular area
 		if(preRenderedMinimap != null) {
 			// First draw black borders for ice edges
-			for(int x = 0; x < minimapSize; x++) {
-				for(int z = 0; z < minimapSize; z++) {
-					int color = preRenderedMinimap[x + z * minimapSize];
+			for(int x = 0; x < Config.minimapSize; x++) {
+				for(int z = 0; z < Config.minimapSize; z++) {
+					int color = preRenderedMinimap[x + z * Config.minimapSize];
 					if((color >>> 24) == 0) continue; // Skip transparent pixels
 					
 					// Check if this is an edge pixel by looking at adjacent pixels
@@ -203,8 +189,8 @@ public class HudRenderer {
 							if(dx == 0 && dz == 0) continue; // Skip current pixel
 							int nx = x + dx;
 							int nz = z + dz;
-							if(nx >= 0 && nx < minimapSize && nz >= 0 && nz < minimapSize) {
-								int neighborColor = preRenderedMinimap[nx + nz * minimapSize];
+							if(nx >= 0 && nx < Config.minimapSize && nz >= 0 && nz < Config.minimapSize) {
+								int neighborColor = preRenderedMinimap[nx + nz * Config.minimapSize];
 								if((neighborColor >>> 24) == 0) {
 									isEdge = true;
 									break;
@@ -219,28 +205,28 @@ public class HudRenderer {
 					}
 					
 					if(isEdge) {
-					// Calculate relative position for border pixel
-					double relX = (x - (double) minimapSize / 2 + 0.5) * scale;
-					double relZ = (z - (double) minimapSize / 2 + 0.5) * scale;
-					
-					// Check if pixel is within circle radius
-					if(relX * relX + relZ * relZ <= radius * radius) {
-						// Draw black border pixel
-						graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, 0xFF000000);
-					}
+				// Calculate relative position for border pixel
+				double relX = (x - (double) Config.minimapSize / 2 + 0.5) * scale;
+				double relZ = (z - (double) Config.minimapSize / 2 + 0.5) * scale;
+				
+				// Check if pixel is within circle radius
+				if(relX * relX + relZ * relZ <= radius * radius) {
+					// Draw black border pixel
+					graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, 0xFF000000);
 				}
 			}
 		}
-		
-		// Then draw the regular ice blocks on top
-		for(int x = 0; x < minimapSize; x++) {
-			for(int z = 0; z < minimapSize; z++) {
-				int color = preRenderedMinimap[x + z * minimapSize];
-				if((color >>> 24) == 0) continue; // Skip transparent pixels
+	}
+	
+	// Then draw the regular ice blocks on top
+	for(int x = 0; x < Config.minimapSize; x++) {
+		for(int z = 0; z < Config.minimapSize; z++) {
+			int color = preRenderedMinimap[x + z * Config.minimapSize];
+			if((color >>> 24) == 0) continue; // Skip transparent pixels
 
-				// Calculate relative position
-				double relX = (x - (double) minimapSize / 2 + 0.5) * scale;
-				double relZ = (z - (double) minimapSize / 2 + 0.5) * scale;
+			// Calculate relative position
+			double relX = (x - (double) Config.minimapSize / 2 + 0.5) * scale;
+			double relZ = (z - (double) Config.minimapSize / 2 + 0.5) * scale;
 
 					// Check if pixel is within circle radius
 					if(relX * relX + relZ * relZ <= radius * radius) {
@@ -304,15 +290,15 @@ public class HudRenderer {
 	private void preRenderMinimap(BlockPos playerBlockPos) {
 		if(this.client.world == null) return;
 		
-		preRenderedMinimap = new int[minimapSize * minimapSize];
-		int centerX = minimapSize / 2;
-		int centerZ = minimapSize / 2;
+		preRenderedMinimap = new int[Config.minimapSize * Config.minimapSize];
+		int centerX = Config.minimapSize / 2;
+		int centerZ = Config.minimapSize / 2;
 		int playerY = playerBlockPos.getY();
 		
 		// Render ice blocks to array with performance optimizations
 		// Ensure we render the entire rectangular area without circular mask
-		for(int x = 0; x < minimapSize; x++) {
-			for(int z = 0; z < minimapSize; z++) {
+		for(int x = 0; x < Config.minimapSize; x++) {
+			for(int z = 0; z < Config.minimapSize; z++) {
 				// Calculate world coordinates
 				int worldX = playerBlockPos.getX() + (x - centerX);
 				int worldZ = playerBlockPos.getZ() + (z - centerZ);

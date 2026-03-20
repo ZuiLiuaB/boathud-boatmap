@@ -43,8 +43,6 @@ public class Config {
 	public static int minimapX = 10;
 	/** Y position of the minimap. */
 	public static int minimapY = 10;
-	/** Scale of the minimap. */
-	public static double minimapScale = 1.0d;
 	/** Y-axis offset for the minimap. */
 	public static int minimapYOffset = 0;
 	/** Whether the minimap should be square. */
@@ -101,9 +99,6 @@ public class Config {
 	if(prop.get("minimapY") instanceof String val) {
 		minimapY = Integer.parseInt(val);
 	}
-	if(prop.get("minimapScale") instanceof String val) {
-		minimapScale = Double.parseDouble(val);
-	}
 	if(prop.get("minimapYOffset") instanceof String val) {
 		minimapYOffset = Integer.parseInt(val);
 	}
@@ -155,9 +150,8 @@ public class Config {
 			// Minimap settings
 		writer.write("minimapEnabled " + Boolean.toString(minimapEnabled) + "\n");
 		writer.write("minimapX " + Integer.toString(minimapX) + "\n");
-		writer.write("minimapY " + Integer.toString(minimapY) + "\n");
-		writer.write("minimapScale " + Double.toString(minimapScale) + "\n");
-		writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
+	writer.write("minimapY " + Integer.toString(minimapY) + "\n");
+	writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
 		writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 		writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
 		writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
@@ -168,7 +162,7 @@ public class Config {
 		writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
 		}
-		catch (Exception e) {
+		catch (Exception ignored) {
 		}
 	}
 

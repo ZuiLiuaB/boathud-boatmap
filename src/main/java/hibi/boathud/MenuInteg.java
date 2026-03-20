@@ -56,19 +56,12 @@ public class MenuInteg implements ModMenuApi {
 			.build())
 
 		.addEntry(entryBuilder.startIntField(MINIMAP_Y, Config.minimapY)
-			.setDefaultValue(10)
-			.setMin(0)
-			.setSaveConsumer(newVal -> Config.minimapY = newVal)
-			.build())
+				.setDefaultValue(10)
+				.setMin(0)
+				.setSaveConsumer(newVal -> Config.minimapY = newVal)
+				.build())
 
-		.addEntry(entryBuilder.startDoubleField(MINIMAP_SCALE, Config.minimapScale)
-			.setDefaultValue(1.0d)
-			.setMin(0.1d)
-			.setMax(5.0d)
-			.setSaveConsumer(newVal -> Config.minimapScale = newVal)
-			.build())
-
-		.addEntry(entryBuilder.startIntField(MINIMAP_Y_OFFSET, Config.minimapYOffset)
+			.addEntry(entryBuilder.startIntField(MINIMAP_Y_OFFSET, Config.minimapYOffset)
 			.setDefaultValue(0)
 			.setMin(-100)
 			.setMax(100)
@@ -147,9 +140,8 @@ public class MenuInteg implements ModMenuApi {
 		SPEED_FORMAT = Text.translatable("boathud.option.speed_format"),
 		MINIMAP_ENABLED = Text.translatable("boathud.option.minimap_enabled"),
 		MINIMAP_X = Text.translatable("boathud.option.minimap_x"),
-		MINIMAP_Y = Text.translatable("boathud.option.minimap_y"),
-		MINIMAP_SCALE = Text.translatable("boathud.option.minimap_scale"),
-		MINIMAP_Y_OFFSET = Text.translatable("boathud.option.minimap_y_offset"),
+	MINIMAP_Y = Text.translatable("boathud.option.minimap_y"),
+	MINIMAP_Y_OFFSET = Text.translatable("boathud.option.minimap_y_offset"),
 		MINIMAP_SQUARE = Text.translatable("boathud.option.minimap_square"),
 		MINIMAP_SHOW_ALL_HEIGHTS = Text.translatable("boathud.option.minimap_show_all_heights"),
 		TIP_MINIMAP_SHOW_ALL_HEIGHTS = Text.translatable("boathud.tooltip.minimap_show_all_heights"),
