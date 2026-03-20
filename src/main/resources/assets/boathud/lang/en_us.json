@@ -35,6 +35,8 @@
 	"boathud.tooltip.minimap_show_other_players": "When enabled, displays other players in boats as blue triangles on the minimap.",
 	"boathud.option.minimap_size": "Minimap Size",
 	"boathud.tooltip.minimap_size": "Adjust the resolution of the minimap. Higher values provide more detail but use more resources.",
+	"boathud.option.minimap_zoom": "Minimap Zoom",
+	"boathud.tooltip.minimap_zoom": "Adjust the world area shown on the minimap. Higher values show more area, lower values show more detail.",
 	"boathud.option.show_speed_bar": "Show Speed Bar",
 	"boathud.tooltip.extended": "Enables acceleration meter and input display",
 	"boathud.tooltip.bar_type": "Change the display and behavior of the speed bar:",

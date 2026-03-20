@@ -299,9 +299,13 @@ public class HudRenderer {
 		// Ensure we render the entire rectangular area without circular mask
 		for(int x = 0; x < Config.minimapSize; x++) {
 			for(int z = 0; z < Config.minimapSize; z++) {
-				// Calculate world coordinates
-				int worldX = playerBlockPos.getX() + (x - centerX);
-				int worldZ = playerBlockPos.getZ() + (z - centerZ);
+				// Calculate world coordinates with zoom
+				// More intuitive zoom calculation: zoom = 1.0 shows normal area, higher values show larger area
+				// Scale the offset by zoom factor to control the area shown
+				double offsetX = (x - centerX) * Config.minimapZoom;
+				double offsetZ = (z - centerZ) * Config.minimapZoom;
+				int worldX = playerBlockPos.getX() + (int)offsetX;
+				int worldZ = playerBlockPos.getZ() + (int)offsetZ;
 				
 				int bestColor = 0;
 				boolean foundIce = false;

@@ -40,5 +40,7 @@
 	"boathud.option.minimap_show_other_players": "显示其他玩家",
 	"boathud.tooltip.minimap_show_other_players": "启用后，小地图上将显示其他乘船玩家，以蓝色小三角形表示。",
 	"boathud.option.minimap_size": "小地图大小",
-	"boathud.tooltip.minimap_size": "调整小地图的分辨率。数值越高提供更多细节，但会使用更多资源。"
+	"boathud.tooltip.minimap_size": "调整小地图的分辨率。数值越高提供更多细节，但会使用更多资源。",
+	"boathud.option.minimap_zoom": "小地图缩放",
+	"boathud.tooltip.minimap_zoom": "调整小地图显示的世界范围。数值越高显示更多区域，数值越低显示更多细节。"
 }

@@ -61,6 +61,8 @@ public class Config {
 	public static boolean minimapShowOtherPlayers = true;
 	/** Size of the minimap in pixels (higher = more detailed but more resource intensive). */
 	public static int minimapSize = 128;
+	/** Zoom level for the minimap (controls how much world area is shown). Higher values = more zoomed out. */
+	public static double minimapZoom = 1.0d;
 
 	private Config() {}
 
@@ -123,6 +125,9 @@ public class Config {
 	if(prop.get("minimapSize") instanceof String val) {
 		minimapSize = Integer.parseInt(val);
 	}
+	if(prop.get("minimapZoom") instanceof String val) {
+		minimapZoom = Double.parseDouble(val);
+	}
 			if(prop.get("showSpeedBar") instanceof String val) {
 				showSpeedBar = Boolean.parseBoolean(val);
 			}
@@ -158,8 +163,9 @@ public class Config {
 		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
 		writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
-		writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
-		writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
+	writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
+	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
+	writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
 		}
 		catch (Exception ignored) {
