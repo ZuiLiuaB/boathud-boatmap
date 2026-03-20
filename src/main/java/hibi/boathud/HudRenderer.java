@@ -63,13 +63,12 @@ public class HudRenderer {
 		this.displayedSpeed = MathHelper.lerp(counter.getTickDelta(false), this.displayedSpeed, Common.hudData.speed);
 	
 		if(Config.extended) {
-			// Overlay texture and bar
-			graphics.drawGuiTexture(RenderLayer::getGuiTextured, BACKGROUND_EXTENDED, i - 91, this.scaledHeight - 83, 182, 33);
-			if(Config.showSpeedBar) {
+				// Overlay texture and bar
+				graphics.drawGuiTexture(RenderLayer::getGuiTextured, BACKGROUND_EXTENDED, i - 91, this.scaledHeight - 83, 182, 33);
+				// Always render speed bar, showSpeedBar setting removed
 				this.renderBar(graphics, i - 91, this.scaledHeight - 83);
-			}
-	
-			// Sprites
+
+				// Sprites
 			if(Common.hudData.isDriver) {
 				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.leftKey.isPressed()? LEFT_LIT : LEFT_UNLIT, i - 86, this.scaledHeight - 65, 17, 8);
 				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.rightKey.isPressed()? RIGHT_LIT : RIGHT_UNLIT, i - 63, this.scaledHeight - 65, 17, 8);
@@ -90,12 +89,11 @@ public class HudRenderer {
 			graphics.drawTextWithShadow(this.client.textRenderer, Common.hudData.name, i + 88 - nameLen, this.scaledHeight - 65, 0xFFFFFF);
 	
 		} else { // Compact mode
-			// Overlay texture and bar
-			graphics.drawGuiTexture(RenderLayer::getGuiTextured, BACKGROUND_COMPACT, i - 91, this.scaledHeight - 83, 182, 20);
-			if(Config.showSpeedBar) {
+				// Overlay texture and bar
+				graphics.drawGuiTexture(RenderLayer::getGuiTextured, BACKGROUND_COMPACT, i - 91, this.scaledHeight - 83, 182, 20);
+				// Always render speed bar, showSpeedBar setting removed
 				this.renderBar(graphics, i - 91, this.scaledHeight - 83);
-			}
-			// Speed and drift angle
+				// Speed and drift angle
 			this.typeCentered(graphics, String.format(Config.speedFormat, this.displayedSpeed * Config.speedRate), i - 58, this.scaledHeight - 76, 0xFFFFFF);
 			this.typeCentered(graphics, String.format(Config.angleFormat, Common.hudData.driftAngle), i + 58, this.scaledHeight - 76, 0xFFFFFF);
 		}

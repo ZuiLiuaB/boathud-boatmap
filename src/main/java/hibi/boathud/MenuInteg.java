@@ -68,10 +68,10 @@ public class MenuInteg implements ModMenuApi {
 			.setSaveConsumer(newVal -> Config.minimapYOffset = newVal)
 			.build())
 
-		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SQUARE, Config.minimapSquare)
-			.setDefaultValue(false)
-			.setSaveConsumer(newVal -> Config.minimapSquare = newVal)
-			.build())
+		// .addEntry(entryBuilder.startBooleanToggle(MINIMAP_SQUARE, Config.minimapSquare)
+		//	.setDefaultValue(false)
+		//	.setSaveConsumer(newVal -> Config.minimapSquare = newVal)
+		//	.build())
 
 		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_ALL_HEIGHTS, Config.minimapShowAllHeights)
 			.setDefaultValue(false)
@@ -119,12 +119,12 @@ public class MenuInteg implements ModMenuApi {
 				.setMax(5.0d)
 				.setTooltip(TIP_MINIMAP_ZOOM)
 				.setSaveConsumer(newVal -> Config.minimapZoom = newVal)
-				.build())
+				.build());
 
-				.addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
-					.setDefaultValue(true)
-					.setSaveConsumer(newVal -> Config.showSpeedBar = newVal)
-					.build());
+				// .addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
+				// 	.setDefaultValue(true)
+				// 	.setSaveConsumer(newVal -> Config.showSpeedBar = newVal)
+				// 	.build());
 
 			builder.setSavingRunnable(() -> Config.save());
 			return builder.build();

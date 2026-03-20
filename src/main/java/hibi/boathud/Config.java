@@ -45,14 +45,14 @@ public class Config {
 	public static int minimapY = 10;
 	/** Y-axis offset for the minimap. */
 	public static int minimapYOffset = 0;
-	/** Whether the minimap should be square. */
-	public static boolean minimapSquare = false;
 	/** Whether to show all ice heights or only ice at or below player level. */
 	public static boolean minimapShowAllHeights = false;
 	/** Whether the minimap should lock to north or follow player rotation. */
 	public static boolean minimapLockNorth = true;
-	/** Whether to show the speed bar. */
-	public static boolean showSpeedBar = true;
+	// /** Whether the minimap should be square. */
+	// public static boolean minimapSquare = false;
+	// /** Whether to show the speed bar. */
+	// public static boolean showSpeedBar = true;
 	/** Ice detection range (blocks above and below player). */
 	public static int minimapIceDetectionRange = 3;
 	/** Whether to show all ice with the same brightness, ignoring height differences. */
@@ -102,14 +102,14 @@ public class Config {
 		minimapY = Integer.parseInt(val);
 	}
 	if(prop.get("minimapYOffset") instanceof String val) {
-		minimapYOffset = Integer.parseInt(val);
-	}
-	if(prop.get("minimapSquare") instanceof String val) {
-		minimapSquare = Boolean.parseBoolean(val);
-	}
-	if(prop.get("minimapShowAllHeights") instanceof String val) {
-		minimapShowAllHeights = Boolean.parseBoolean(val);
-	}
+			minimapYOffset = Integer.parseInt(val);
+		}
+		// if(prop.get("minimapSquare") instanceof String val) {
+		// 	minimapSquare = Boolean.parseBoolean(val);
+		// }
+		if(prop.get("minimapShowAllHeights") instanceof String val) {
+			minimapShowAllHeights = Boolean.parseBoolean(val);
+		}
 	if(prop.get("minimapLockNorth") instanceof String val) {
 		minimapLockNorth = Boolean.parseBoolean(val);
 	}
@@ -128,9 +128,9 @@ public class Config {
 	if(prop.get("minimapZoom") instanceof String val) {
 		minimapZoom = Double.parseDouble(val);
 	}
-			if(prop.get("showSpeedBar") instanceof String val) {
-				showSpeedBar = Boolean.parseBoolean(val);
-			}
+			// if(prop.get("showSpeedBar") instanceof String val) {
+			// showSpeedBar = Boolean.parseBoolean(val);
+			// }
 		}
 		catch (Exception e) {
 			// Empty catch block
@@ -157,7 +157,6 @@ public class Config {
 		writer.write("minimapX " + Integer.toString(minimapX) + "\n");
 	writer.write("minimapY " + Integer.toString(minimapY) + "\n");
 	writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
-		writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 		writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
 		writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
 		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
@@ -165,7 +164,8 @@ public class Config {
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
 	writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
 	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
-	writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
+		// writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
+		// writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
 		}
 		catch (Exception ignored) {
