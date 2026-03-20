@@ -84,6 +84,18 @@ public class MenuInteg implements ModMenuApi {
 					.setDefaultValue(true)
 					.setTooltip(TIP_MINIMAP_LOCK_NORTH)
 					.setSaveConsumer(newVal -> Config.minimapLockNorth = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startEnumSelector(MINIMAP_PLAYER_SHAPE, PlayerShape.class, PlayerShape.values()[Config.minimapPlayerShape])
+					.setDefaultValue(PlayerShape.CIRCLE)
+					.setTooltip(TIP_MINIMAP_PLAYER_SHAPE)
+					.setSaveConsumer(newVal -> Config.minimapPlayerShape = newVal.ordinal())
+					.setEnumNameProvider(value -> Text.translatable("boathud.option.minimap_player_shape." + value.toString()))
+					.build())
+
+				.addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
+					.setDefaultValue(true)
+					.setSaveConsumer(newVal -> Config.showSpeedBar = newVal)
 					.build());
 
 			builder.setSavingRunnable(() -> Config.save());
@@ -94,8 +106,11 @@ public class MenuInteg implements ModMenuApi {
 	public enum BarType {
 		PACKED, MIXED, BLUE
 	}
-	public enum SpeedFormat {
+		public enum SpeedFormat {
 		MS, KMPH, MPH, KT
+	}
+	public enum PlayerShape {
+		SQUARE, CIRCLE
 	}
 
 	private static final MutableText
@@ -113,6 +128,9 @@ public class MenuInteg implements ModMenuApi {
 		MINIMAP_SQUARE = Text.translatable("boathud.option.minimap_square"),
 		MINIMAP_LOCK_NORTH = Text.translatable("boathud.option.minimap_lock_north"),
 		TIP_MINIMAP_LOCK_NORTH = Text.translatable("boathud.tooltip.minimap_lock_north"),
+		MINIMAP_PLAYER_SHAPE = Text.translatable("boathud.option.minimap_player_shape"),
+		TIP_MINIMAP_PLAYER_SHAPE = Text.translatable("boathud.tooltip.minimap_player_shape"),
+		SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),
 		TIP_BAR_PACKED = Text.translatable("boathud.tooltip.bar_type.packed"),

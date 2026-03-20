@@ -25,5 +25,10 @@
 	"boathud.option.minimap_y_offset": "小地图 Y 轴偏移",
 	"boathud.option.minimap_square": "小地图正方形",
 	"boathud.option.minimap_lock_north": "锁定北方",
-	"boathud.tooltip.minimap_lock_north": "启用后小地图将固定显示北方，禁用后会跟随玩家视角旋转。"
+	"boathud.tooltip.minimap_lock_north": "启用后小地图将固定显示北方，禁用后会跟随玩家视角旋转。",
+	"boathud.option.minimap_player_shape": "玩家指示器形状",
+	"boathud.option.minimap_player_shape.SQUARE": "方形",
+	"boathud.option.minimap_player_shape.CIRCLE": "圆形",
+	"boathud.tooltip.minimap_player_shape": "选择小地图上玩家指示器的显示形状。",
+	"boathud.option.show_speed_bar": "显示速度条"
 }

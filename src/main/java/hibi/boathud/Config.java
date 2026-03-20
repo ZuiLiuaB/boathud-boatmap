@@ -51,6 +51,10 @@ public class Config {
 	public static boolean minimapSquare = false;
 	/** Whether the minimap should lock to north or follow player rotation. */
 	public static boolean minimapLockNorth = true;
+	/** Player indicator shape: 0 for square, 1 for circle. Default is circle (1). */
+	public static int minimapPlayerShape = 1;
+	/** Whether to show the speed bar. */
+	public static boolean showSpeedBar = true;
 
 	private Config() {}
 
@@ -101,6 +105,12 @@ public class Config {
 			if(prop.get("minimapLockNorth") instanceof String val) {
 				minimapLockNorth = Boolean.parseBoolean(val);
 			}
+			if(prop.get("minimapPlayerShape") instanceof String val) {
+				minimapPlayerShape = Integer.parseInt(val);
+			}
+			if(prop.get("showSpeedBar") instanceof String val) {
+				showSpeedBar = Boolean.parseBoolean(val);
+			}
 		}
 		catch (Exception e) {
 			// Empty catch block
@@ -130,6 +140,8 @@ public class Config {
 			writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
 			writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 			writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
+			writer.write("minimapPlayerShape " + Integer.toString(minimapPlayerShape) + "\n");
+			writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
 		}
 		catch (Exception e) {
