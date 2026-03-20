@@ -38,5 +38,7 @@
 	"boathud.option.minimap_flat_ice": "平板冰显示",
 	"boathud.tooltip.minimap_flat_ice": "启用后，所有冰道将显示为相同亮度，忽略高度差异。",
 	"boathud.option.minimap_show_other_players": "显示其他玩家",
-	"boathud.tooltip.minimap_show_other_players": "启用后，小地图上将显示其他乘船玩家，以蓝色小三角形表示。"
+	"boathud.tooltip.minimap_show_other_players": "启用后，小地图上将显示其他乘船玩家，以蓝色小三角形表示。",
+	"boathud.option.minimap_size": "小地图大小",
+	"boathud.tooltip.minimap_size": "调整小地图的分辨率。数值越高提供更多细节，但会使用更多资源。"
 }

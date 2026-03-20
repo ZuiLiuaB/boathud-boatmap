@@ -112,7 +112,13 @@ public class MenuInteg implements ModMenuApi {
 				.setSaveConsumer(newVal -> Config.minimapShowOtherPlayers = newVal)
 				.build())
 
-
+			.addEntry(entryBuilder.startIntField(MINIMAP_SIZE, Config.minimapSize)
+				.setDefaultValue(128)
+				.setMin(32)
+				.setMax(512)
+				.setTooltip(TIP_MINIMAP_SIZE)
+				.setSaveConsumer(newVal -> Config.minimapSize = newVal)
+				.build())
 
 				.addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
 					.setDefaultValue(true)
@@ -156,6 +162,8 @@ public class MenuInteg implements ModMenuApi {
 	TIP_MINIMAP_FLAT_ICE = Text.translatable("boathud.tooltip.minimap_flat_ice"),
 	MINIMAP_SHOW_OTHER_PLAYERS = Text.translatable("boathud.option.minimap_show_other_players"),
 	TIP_MINIMAP_SHOW_OTHER_PLAYERS = Text.translatable("boathud.tooltip.minimap_show_other_players"),
+	MINIMAP_SIZE = Text.translatable("boathud.option.minimap_size"),
+	TIP_MINIMAP_SIZE = Text.translatable("boathud.tooltip.minimap_size"),
 	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),

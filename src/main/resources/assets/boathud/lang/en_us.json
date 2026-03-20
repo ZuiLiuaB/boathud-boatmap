@@ -33,6 +33,8 @@
 	"boathud.tooltip.minimap_show_all_heights": "When enabled, shows ice blocks at all heights. When disabled, shows only ice at or below player level.",
 	"boathud.option.minimap_show_other_players": "Show Other Players",
 	"boathud.tooltip.minimap_show_other_players": "When enabled, displays other players in boats as blue triangles on the minimap.",
+	"boathud.option.minimap_size": "Minimap Size",
+	"boathud.tooltip.minimap_size": "Adjust the resolution of the minimap. Higher values provide more detail but use more resources.",
 	"boathud.option.show_speed_bar": "Show Speed Bar",
 	"boathud.tooltip.extended": "Enables acceleration meter and input display",
 	"boathud.tooltip.bar_type": "Change the display and behavior of the speed bar:",

@@ -61,6 +61,8 @@ public class Config {
 	public static boolean minimapFlatIce = false;
 	/** Whether to show other players in boats on the minimap. */
 	public static boolean minimapShowOtherPlayers = true;
+	/** Size of the minimap in pixels (higher = more detailed but more resource intensive). */
+	public static int minimapSize = 128;
 
 	private Config() {}
 
@@ -90,40 +92,42 @@ public class Config {
 				setUnit(Integer.parseInt(val));
 			}
 			// Minimap settings
-		if(prop.get("minimapEnabled") instanceof String val) {
-			minimapEnabled = Boolean.parseBoolean(val);
-		}
-		if(prop.get("minimapX") instanceof String val) {
-			minimapX = Integer.parseInt(val);
-		}
-		if(prop.get("minimapY") instanceof String val) {
-			minimapY = Integer.parseInt(val);
-		}
-		if(prop.get("minimapScale") instanceof String val) {
-			minimapScale = Double.parseDouble(val);
-		}
-		if(prop.get("minimapYOffset") instanceof String val) {
-			minimapYOffset = Integer.parseInt(val);
-		}
-		if(prop.get("minimapSquare") instanceof String val) {
-			minimapSquare = Boolean.parseBoolean(val);
-		}
-		if(prop.get("minimapShowAllHeights") instanceof String val) {
-			minimapShowAllHeights = Boolean.parseBoolean(val);
-		}
-			if(prop.get("minimapLockNorth") instanceof String val) {
-				minimapLockNorth = Boolean.parseBoolean(val);
-			}
-
-			if(prop.get("minimapIceDetectionRange") instanceof String val) {
-				minimapIceDetectionRange = Integer.parseInt(val);
-			}
-			if(prop.get("minimapFlatIce") instanceof String val) {
-				minimapFlatIce = Boolean.parseBoolean(val);
-			}
-			if(prop.get("minimapShowOtherPlayers") instanceof String val) {
-				minimapShowOtherPlayers = Boolean.parseBoolean(val);
-			}
+	if(prop.get("minimapEnabled") instanceof String val) {
+		minimapEnabled = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapX") instanceof String val) {
+		minimapX = Integer.parseInt(val);
+	}
+	if(prop.get("minimapY") instanceof String val) {
+		minimapY = Integer.parseInt(val);
+	}
+	if(prop.get("minimapScale") instanceof String val) {
+		minimapScale = Double.parseDouble(val);
+	}
+	if(prop.get("minimapYOffset") instanceof String val) {
+		minimapYOffset = Integer.parseInt(val);
+	}
+	if(prop.get("minimapSquare") instanceof String val) {
+		minimapSquare = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapShowAllHeights") instanceof String val) {
+		minimapShowAllHeights = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapLockNorth") instanceof String val) {
+		minimapLockNorth = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapIceDetectionRange") instanceof String val) {
+		minimapIceDetectionRange = Integer.parseInt(val);
+	}
+	if(prop.get("minimapFlatIce") instanceof String val) {
+		minimapFlatIce = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapShowOtherPlayers") instanceof String val) {
+		minimapShowOtherPlayers = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapSize") instanceof String val) {
+		minimapSize = Integer.parseInt(val);
+	}
 			if(prop.get("showSpeedBar") instanceof String val) {
 				showSpeedBar = Boolean.parseBoolean(val);
 			}
@@ -160,6 +164,7 @@ public class Config {
 		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
 		writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
+		writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
 		writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
 		}

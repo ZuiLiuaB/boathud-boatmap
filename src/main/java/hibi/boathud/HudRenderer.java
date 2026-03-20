@@ -15,6 +15,8 @@ import org.joml.Quaternionf;
 import java.util.HashMap;
 import java.util.Map;
 
+import static hibi.boathud.Config.minimapSize;
+
 public class HudRenderer {
 
 	private final MinecraftClient client;
@@ -34,7 +36,6 @@ public class HudRenderer {
 	
 	// Pre-rendered minimap texture cache
 	private int[] preRenderedMinimap;
-	private int minimapSize = 128;
 	private BlockPos lastRenderedPos = null;
 	private int lastRenderedY = 0;
 
@@ -107,12 +108,16 @@ public class HudRenderer {
 
 	/** Renders the minimap showing ice blocks with optimized caching and proper rotation */
 	public void renderMinimap(DrawContext graphics) {
-		if(this.client.player == null || this.client.world == null) return;
+		if(this.client.world == null) return;
+
+		// Get camera entity (local player or spectated player)
+		net.minecraft.entity.Entity cameraEntity = this.client.getCameraEntity();
+		if(cameraEntity == null) return;
 
 		// Get player position and rotation
-		Vec3d playerPos = this.client.player.getPos();
-		BlockPos playerBlockPos = this.client.player.getBlockPos();
-		float playerYaw = this.client.player.getYaw();
+		Vec3d playerPos = cameraEntity.getPos();
+		BlockPos playerBlockPos = cameraEntity.getBlockPos();
+		float playerYaw = cameraEntity.getYaw();
 
 		// Check if cache needs update with improved conditions
 		boolean positionChanged = lastRenderedPos == null || 
@@ -185,14 +190,57 @@ public class HudRenderer {
 
 		// Draw ice blocks with rotation applied, only within circular area
 		if(preRenderedMinimap != null) {
+			// First draw black borders for ice edges
 			for(int x = 0; x < minimapSize; x++) {
 				for(int z = 0; z < minimapSize; z++) {
 					int color = preRenderedMinimap[x + z * minimapSize];
 					if((color >>> 24) == 0) continue; // Skip transparent pixels
-
-					// Calculate relative position
+					
+					// Check if this is an edge pixel by looking at adjacent pixels
+					boolean isEdge = false;
+					for(int dx = -1; dx <= 1; dx++) {
+						for(int dz = -1; dz <= 1; dz++) {
+							if(dx == 0 && dz == 0) continue; // Skip current pixel
+							int nx = x + dx;
+							int nz = z + dz;
+							if(nx >= 0 && nx < minimapSize && nz >= 0 && nz < minimapSize) {
+								int neighborColor = preRenderedMinimap[nx + nz * minimapSize];
+								if((neighborColor >>> 24) == 0) {
+									isEdge = true;
+									break;
+								}
+							} else {
+								// Edge of the map is considered an edge
+								isEdge = true;
+								break;
+							}
+						}
+						if(isEdge) break;
+					}
+					
+					if(isEdge) {
+					// Calculate relative position for border pixel
 					double relX = (x - (double) minimapSize / 2 + 0.5) * scale;
 					double relZ = (z - (double) minimapSize / 2 + 0.5) * scale;
+					
+					// Check if pixel is within circle radius
+					if(relX * relX + relZ * relZ <= radius * radius) {
+						// Draw black border pixel
+						graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, 0xFF000000);
+					}
+				}
+			}
+		}
+		
+		// Then draw the regular ice blocks on top
+		for(int x = 0; x < minimapSize; x++) {
+			for(int z = 0; z < minimapSize; z++) {
+				int color = preRenderedMinimap[x + z * minimapSize];
+				if((color >>> 24) == 0) continue; // Skip transparent pixels
+
+				// Calculate relative position
+				double relX = (x - (double) minimapSize / 2 + 0.5) * scale;
+				double relZ = (z - (double) minimapSize / 2 + 0.5) * scale;
 
 					// Check if pixel is within circle radius
 					if(relX * relX + relZ * relZ <= radius * radius) {
@@ -244,13 +292,12 @@ public class HudRenderer {
 
 		// Draw other players in boats if enabled
 		if(Config.minimapShowOtherPlayers) {
-			drawOtherPlayers(graphics, centerX, centerY, playerBlockPos, scale);
+			drawOtherPlayers(graphics, centerX, centerY, playerBlockPos, scale, minimapCache.smoothYaw);
 		}
 
-		// Draw circular minimap border - black thin border
+		// Draw circular minimap border - black outer stroke
 		int borderThickness = 1;
 		drawCircle(graphics, centerX, centerY, radius + borderThickness, 0xFF000000);
-		drawCircle(graphics, centerX, centerY, radius, 0xFF000000);
 	}
 	
 	/** Pre-renders the minimap to an integer array with performance optimizations */
@@ -374,14 +421,20 @@ public class HudRenderer {
 		return (alpha << 24) | (gray << 16) | (gray << 8) | gray;
 	}
 	
-	/** Draw other players in boats on the minimap as blue small triangles */
-	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, BlockPos playerBlockPos, double scale) {
+	/** Draw other players in boats on the minimap as blue small squares */
+	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, BlockPos playerBlockPos, double scale, float currentYaw) {
 		if(this.client.world == null) return;
 		
-		// Get all players in the world
+		// Get all players in the world (limit to improve performance)
+		int maxPlayersToRender = 16;
+		int playersRendered = 0;
+		
 		for(net.minecraft.entity.player.PlayerEntity otherPlayer : this.client.world.getPlayers()) {
-			// Skip the local player
-			if(otherPlayer == this.client.player) continue;
+			// Limit the number of players rendered to improve performance
+			if(playersRendered >= maxPlayersToRender) break;
+			
+			// Skip the local player (or the player we're spectating)
+			if(otherPlayer == this.client.player || otherPlayer == this.client.getCameraEntity()) continue;
 			
 			// Check if player is in a boat
 			if(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity) {
@@ -392,28 +445,32 @@ public class HudRenderer {
 				int relX = otherBlockPos.getX() - playerBlockPos.getX();
 				int relZ = otherBlockPos.getZ() - playerBlockPos.getZ();
 				
-				// Calculate screen coordinates with scale
-				int screenX = centerX + (int)(relX * scale);
-				int screenY = centerY + (int)(relZ * scale);
+				// Apply rotation to match map rotation (invert rotation to match map direction)
+				float rotation = (float)Math.toRadians(-currentYaw);
+				float sin = MathHelper.sin(rotation);
+				float cos = MathHelper.cos(rotation);
 				
-				// Draw blue small triangle for other player
+				// Rotate the relative coordinates
+				float rotatedX = (float)relX * cos - (float)relZ * sin;
+				float rotatedZ = (float)relX * sin + (float)relZ * cos;
+				
+				// Calculate screen coordinates with scale
+				int screenX = centerX + (int)(rotatedX * scale);
+				int screenY = centerY + (int)(rotatedZ * scale);
+				
+				// Draw blue small square for other player
 				int indicatorSize = (int)(2 * scale); // Smaller than local player
-				int triangleHeight = (int)(indicatorSize * 1.5);
 				int borderSize = 1;
 				
-				// Draw black border triangle (slightly larger)
-				drawTriangle(graphics, 
-					screenX, screenY - triangleHeight - borderSize, // Top point
-					screenX - indicatorSize - borderSize, screenY + borderSize, // Bottom left
-					screenX + indicatorSize + borderSize, screenY + borderSize, // Bottom right
-					0xFF000000); // Black border
+				// Draw black border square (slightly larger)
+				graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
+					screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, 0xFF000000);
 				
-				// Draw blue filled triangle
-				drawTriangle(graphics, 
-					screenX, screenY - triangleHeight, // Top point
-					screenX - indicatorSize, screenY, // Bottom left
-					screenX + indicatorSize, screenY, // Bottom right
-					0xFF0000FF); // Blue color
+				// Draw blue filled square
+				graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
+					screenX + indicatorSize + 1, screenY + indicatorSize + 1, 0xFF0000FF);
+				
+				playersRendered++;
 			}
 		}
 	}
