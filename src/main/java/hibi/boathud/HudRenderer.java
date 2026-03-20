@@ -118,7 +118,7 @@ public class HudRenderer {
 		float playerYaw = cameraEntity.getYaw();
 
 		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
-		preRenderMinimap(playerBlockPos);
+		preRenderMinimap(playerPos);
 
 		// Calculate minimap position
 		int posX = Config.minimapX;
@@ -242,9 +242,10 @@ public class HudRenderer {
 		minimapCache.iceCache.clear();
 		minimapCache.needsUpdate = false;
 
-		// Draw player indicator at center - upward pointing triangle
-		int indicatorSize = (int)(3 * scale); // Size for triangle
-		int triangleHeight = (int)(indicatorSize * 1.5);
+		// Draw player indicator at center - upward pointing triangle with customizable size
+		// Make triangle taller and more pointed (height multiplier increased from 1.5 to 2.0)
+		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale); // Use customizable size
+		int triangleHeight = (int)(indicatorSize * 2.0); // Taller, more pointed triangle
 		
 		// Draw black border triangle (slightly larger)
 		int borderSize = 1;
@@ -276,7 +277,7 @@ public class HudRenderer {
 
 		// Draw other players in boats if enabled
 		if(Config.minimapShowOtherPlayers) {
-			drawOtherPlayers(graphics, centerX, centerY, playerBlockPos, scale, minimapCache.smoothYaw);
+			drawOtherPlayers(graphics, centerX, centerY, playerPos, scale, minimapCache.smoothYaw);
 		}
 
 		// Draw circular minimap border - black outer stroke
@@ -285,13 +286,13 @@ public class HudRenderer {
 	}
 	
 	/** Pre-renders the minimap to an integer array with performance optimizations */
-	private void preRenderMinimap(BlockPos playerBlockPos) {
+	private void preRenderMinimap(Vec3d playerPos) {
 		if(this.client.world == null) return;
 		
 		preRenderedMinimap = new int[Config.minimapSize * Config.minimapSize];
 		int centerX = Config.minimapSize / 2;
 		int centerZ = Config.minimapSize / 2;
-		int playerY = playerBlockPos.getY();
+		int playerY = (int)playerPos.y;
 		
 		// Render ice blocks to array with performance optimizations
 		// Ensure we render the entire rectangular area without circular mask
@@ -302,8 +303,9 @@ public class HudRenderer {
 				// Scale the offset by zoom factor to control the area shown
 				double offsetX = (x - centerX) * Config.minimapZoom;
 				double offsetZ = (z - centerZ) * Config.minimapZoom;
-				int worldX = playerBlockPos.getX() + (int)offsetX;
-				int worldZ = playerBlockPos.getZ() + (int)offsetZ;
+				// Use precise floating-point player position for smooth movement
+				int worldX = (int)(playerPos.x + offsetX);
+				int worldZ = (int)(playerPos.z + offsetZ);
 				
 				int bestColor = 0;
 				boolean foundIce = false;
@@ -410,7 +412,7 @@ public class HudRenderer {
 	}
 	
 	/** Draw other players in boats on the minimap as blue small squares */
-	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, BlockPos playerBlockPos, double scale, float currentYaw) {
+	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, Vec3d playerPos, double scale, float currentYaw) {
 		if(this.client.world == null) return;
 		
 		// Get all players in the world (limit to improve performance)
@@ -427,11 +429,11 @@ public class HudRenderer {
 			// Check if player is in a boat
 			if(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity) {
 				// Calculate player's position relative to the local player
-				BlockPos otherBlockPos = otherPlayer.getBlockPos();
+				Vec3d otherPos = otherPlayer.getPos();
 				
-				// Calculate relative coordinates
-				int relX = otherBlockPos.getX() - playerBlockPos.getX();
-				int relZ = otherBlockPos.getZ() - playerBlockPos.getZ();
+				// Calculate relative coordinates with precise floating-point values
+				double relX = otherPos.x - playerPos.x;
+				double relZ = otherPos.z - playerPos.z;
 				
 				// Apply rotation to match map rotation (invert rotation to match map direction)
 				float rotation = (float)Math.toRadians(-currentYaw);
@@ -446,8 +448,8 @@ public class HudRenderer {
 				int screenX = centerX + (int)(rotatedX * scale);
 				int screenY = centerY + (int)(rotatedZ * scale);
 				
-				// Draw blue small square for other player
-				int indicatorSize = (int)(2 * scale); // Smaller than local player
+				// Draw blue small square for other player with customizable size
+				int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
 				int borderSize = 1;
 				
 				// Draw black border square (slightly larger)

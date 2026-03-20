@@ -119,6 +119,22 @@ public class MenuInteg implements ModMenuApi {
 				.setMax(5.0d)
 				.setTooltip(TIP_MINIMAP_ZOOM)
 				.setSaveConsumer(newVal -> Config.minimapZoom = newVal)
+				.build())
+
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_PLAYER_INDICATOR_SIZE, Config.minimapPlayerIndicatorSize)
+				.setDefaultValue(3.0d)
+				.setMin(0.5d)
+				.setMax(10.0d)
+				.setTooltip(TIP_MINIMAP_PLAYER_INDICATOR_SIZE)
+				.setSaveConsumer(newVal -> Config.minimapPlayerIndicatorSize = newVal)
+				.build())
+
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE, Config.minimapOtherPlayersIndicatorSize)
+				.setDefaultValue(2.0d)
+				.setMin(0.5d)
+				.setMax(10.0d)
+				.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE)
+				.setSaveConsumer(newVal -> Config.minimapOtherPlayersIndicatorSize = newVal)
 				.build());
 
 				// .addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
@@ -166,6 +182,10 @@ public class MenuInteg implements ModMenuApi {
 	TIP_MINIMAP_SIZE = Text.translatable("boathud.tooltip.minimap_size"),
 	MINIMAP_ZOOM = Text.translatable("boathud.option.minimap_zoom"),
 	TIP_MINIMAP_ZOOM = Text.translatable("boathud.tooltip.minimap_zoom"),
+	MINIMAP_PLAYER_INDICATOR_SIZE = Text.translatable("boathud.option.minimap_player_indicator_size"),
+	TIP_MINIMAP_PLAYER_INDICATOR_SIZE = Text.translatable("boathud.tooltip.minimap_player_indicator_size"),
+	MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.option.minimap_other_players_indicator_size"),
+	TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_indicator_size"),
 	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),

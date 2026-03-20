@@ -63,6 +63,10 @@ public class Config {
 	public static int minimapSize = 128;
 	/** Zoom level for the minimap (controls how much world area is shown). Higher values = more zoomed out. */
 	public static double minimapZoom = 1.0d;
+	/** Size of the local player indicator on the minimap. */
+	public static double minimapPlayerIndicatorSize = 3.0d;
+	/** Size of other players' indicators on the minimap. */
+	public static double minimapOtherPlayersIndicatorSize = 2.0d;
 
 	private Config() {}
 
@@ -128,6 +132,12 @@ public class Config {
 	if(prop.get("minimapZoom") instanceof String val) {
 		minimapZoom = Double.parseDouble(val);
 	}
+	if(prop.get("minimapPlayerIndicatorSize") instanceof String val) {
+		minimapPlayerIndicatorSize = Double.parseDouble(val);
+	}
+	if(prop.get("minimapOtherPlayersIndicatorSize") instanceof String val) {
+		minimapOtherPlayersIndicatorSize = Double.parseDouble(val);
+	}
 			// if(prop.get("showSpeedBar") instanceof String val) {
 			// showSpeedBar = Boolean.parseBoolean(val);
 			// }
@@ -164,6 +174,8 @@ public class Config {
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
 	writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
 	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
+	writer.write("minimapPlayerIndicatorSize " + Double.toString(minimapPlayerIndicatorSize) + "\n");
+	writer.write("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize) + "\n");
 		// writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 		// writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();
