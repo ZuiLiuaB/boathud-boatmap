@@ -24,7 +24,8 @@ public class HudRenderer {
 	private int scaledHeight;
 
 	// Cache for minimap to avoid recalculating every frame
-	private static class MinimapCache {
+	// Make this non-static to avoid memory leaks when the HUD renderer is recreated
+	private class MinimapCache {
 		BlockPos lastPlayerPos = null;
 		int lastPlayerY = 0;
 		float lastYaw = 0f;
@@ -238,10 +239,6 @@ public class HudRenderer {
 		// Pop the matrix stack to reset rotation for player indicator
 		graphics.getMatrices().pop();
 
-		// Clear cache after each render to prevent memory leaks
-		minimapCache.iceCache.clear();
-		minimapCache.needsUpdate = false;
-
 		// Draw player indicator at center - upward pointing triangle with customizable size
 		// Make triangle taller and more pointed (height multiplier increased from 1.5 to 2.0)
 		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale); // Use customizable size
@@ -289,6 +286,13 @@ public class HudRenderer {
 	private void preRenderMinimap(Vec3d playerPos) {
 		if(this.client.world == null) return;
 		
+		// Release old pre-rendered array to free memory before creating new one
+		if(preRenderedMinimap != null) {
+			// Set to null to allow garbage collection
+			preRenderedMinimap = null;
+		}
+		
+		// Create new pre-rendered array with current size
 		preRenderedMinimap = new int[Config.minimapSize * Config.minimapSize];
 		int centerX = Config.minimapSize / 2;
 		int centerZ = Config.minimapSize / 2;
@@ -352,9 +356,12 @@ public class HudRenderer {
 				}
 				
 				// Store the color for this position (will be transparent if no ice found)
-				preRenderedMinimap[x + z * minimapSize] = bestColor;
+				preRenderedMinimap[x + z * Config.minimapSize] = bestColor;
 			}
 		}
+		
+		// Clear the ice cache after each render to free memory
+		minimapCache.iceCache.clear();
 	}
 	
 	/** Check if the block is an ice block we want to render */
@@ -444,9 +451,10 @@ public class HudRenderer {
 				float rotatedX = (float)relX * cos - (float)relZ * sin;
 				float rotatedZ = (float)relX * sin + (float)relZ * cos;
 				
-				// Calculate screen coordinates with scale
-				int screenX = centerX + (int)(rotatedX * scale);
-				int screenY = centerY + (int)(rotatedZ * scale);
+				// Calculate screen coordinates with scale and zoom
+				// Apply zoom factor to relative coordinates to match minimap zoom level
+				int screenX = centerX + (int)(rotatedX * scale / Config.minimapZoom);
+				int screenY = centerY + (int)(rotatedZ * scale / Config.minimapZoom);
 				
 				// Draw blue small square for other player with customizable size
 				int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
