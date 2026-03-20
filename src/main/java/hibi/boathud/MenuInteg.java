@@ -44,54 +44,75 @@ public class MenuInteg implements ModMenuApi {
 					.build())
 
 				// Minimap settings
-				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_ENABLED, Config.minimapEnabled)
-					.setDefaultValue(true)
-					.setSaveConsumer(newVal -> Config.minimapEnabled = newVal)
-					.build())
+		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_ENABLED, Config.minimapEnabled)
+			.setDefaultValue(true)
+			.setSaveConsumer(newVal -> Config.minimapEnabled = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startIntField(MINIMAP_X, Config.minimapX)
-					.setDefaultValue(10)
-					.setMin(0)
-					.setSaveConsumer(newVal -> Config.minimapX = newVal)
-					.build())
+		.addEntry(entryBuilder.startIntField(MINIMAP_X, Config.minimapX)
+			.setDefaultValue(10)
+			.setMin(0)
+			.setSaveConsumer(newVal -> Config.minimapX = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startIntField(MINIMAP_Y, Config.minimapY)
-					.setDefaultValue(10)
-					.setMin(0)
-					.setSaveConsumer(newVal -> Config.minimapY = newVal)
-					.build())
+		.addEntry(entryBuilder.startIntField(MINIMAP_Y, Config.minimapY)
+			.setDefaultValue(10)
+			.setMin(0)
+			.setSaveConsumer(newVal -> Config.minimapY = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startDoubleField(MINIMAP_SCALE, Config.minimapScale)
-					.setDefaultValue(1.0d)
-					.setMin(0.1d)
-					.setMax(5.0d)
-					.setSaveConsumer(newVal -> Config.minimapScale = newVal)
-					.build())
+		.addEntry(entryBuilder.startDoubleField(MINIMAP_SCALE, Config.minimapScale)
+			.setDefaultValue(1.0d)
+			.setMin(0.1d)
+			.setMax(5.0d)
+			.setSaveConsumer(newVal -> Config.minimapScale = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startIntField(MINIMAP_Y_OFFSET, Config.minimapYOffset)
-					.setDefaultValue(0)
-					.setMin(-100)
-					.setMax(100)
-					.setSaveConsumer(newVal -> Config.minimapYOffset = newVal)
-					.build())
+		.addEntry(entryBuilder.startIntField(MINIMAP_Y_OFFSET, Config.minimapYOffset)
+			.setDefaultValue(0)
+			.setMin(-100)
+			.setMax(100)
+			.setSaveConsumer(newVal -> Config.minimapYOffset = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SQUARE, Config.minimapSquare)
-					.setDefaultValue(false)
-					.setSaveConsumer(newVal -> Config.minimapSquare = newVal)
-					.build())
+		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SQUARE, Config.minimapSquare)
+			.setDefaultValue(false)
+			.setSaveConsumer(newVal -> Config.minimapSquare = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LOCK_NORTH, Config.minimapLockNorth)
-					.setDefaultValue(true)
-					.setTooltip(TIP_MINIMAP_LOCK_NORTH)
-					.setSaveConsumer(newVal -> Config.minimapLockNorth = newVal)
-					.build())
+		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_ALL_HEIGHTS, Config.minimapShowAllHeights)
+			.setDefaultValue(false)
+			.setTooltip(TIP_MINIMAP_SHOW_ALL_HEIGHTS)
+			.setSaveConsumer(newVal -> Config.minimapShowAllHeights = newVal)
+			.build())
 
-				.addEntry(entryBuilder.startEnumSelector(MINIMAP_PLAYER_SHAPE, PlayerShape.class, PlayerShape.values()[Config.minimapPlayerShape])
-					.setDefaultValue(PlayerShape.CIRCLE)
-					.setTooltip(TIP_MINIMAP_PLAYER_SHAPE)
-					.setSaveConsumer(newVal -> Config.minimapPlayerShape = newVal.ordinal())
-					.setEnumNameProvider(value -> Text.translatable("boathud.option.minimap_player_shape." + value.toString()))
-					.build())
+		.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LOCK_NORTH, Config.minimapLockNorth)
+				.setDefaultValue(true)
+				.setTooltip(TIP_MINIMAP_LOCK_NORTH)
+				.setSaveConsumer(newVal -> Config.minimapLockNorth = newVal)
+				.build())
+
+			.addEntry(entryBuilder.startIntField(MINIMAP_ICE_DETECTION_RANGE, Config.minimapIceDetectionRange)
+				.setDefaultValue(15)
+				.setMin(1)
+				.setMax(100)
+				.setTooltip(TIP_MINIMAP_ICE_DETECTION_RANGE)
+				.setSaveConsumer(newVal -> Config.minimapIceDetectionRange = newVal)
+				.build())
+
+			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_FLAT_ICE, Config.minimapFlatIce)
+				.setDefaultValue(false)
+				.setTooltip(TIP_MINIMAP_FLAT_ICE)
+				.setSaveConsumer(newVal -> Config.minimapFlatIce = newVal)
+				.build())
+
+			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_OTHER_PLAYERS, Config.minimapShowOtherPlayers)
+				.setDefaultValue(true)
+				.setTooltip(TIP_MINIMAP_SHOW_OTHER_PLAYERS)
+				.setSaveConsumer(newVal -> Config.minimapShowOtherPlayers = newVal)
+				.build())
+
+
 
 				.addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
 					.setDefaultValue(true)
@@ -109,9 +130,7 @@ public class MenuInteg implements ModMenuApi {
 		public enum SpeedFormat {
 		MS, KMPH, MPH, KT
 	}
-	public enum PlayerShape {
-		SQUARE, CIRCLE
-	}
+
 
 	private static final MutableText
 		TITLE = Text.translatable("boathud.config.title"),
@@ -126,11 +145,18 @@ public class MenuInteg implements ModMenuApi {
 		MINIMAP_SCALE = Text.translatable("boathud.option.minimap_scale"),
 		MINIMAP_Y_OFFSET = Text.translatable("boathud.option.minimap_y_offset"),
 		MINIMAP_SQUARE = Text.translatable("boathud.option.minimap_square"),
+		MINIMAP_SHOW_ALL_HEIGHTS = Text.translatable("boathud.option.minimap_show_all_heights"),
+		TIP_MINIMAP_SHOW_ALL_HEIGHTS = Text.translatable("boathud.tooltip.minimap_show_all_heights"),
 		MINIMAP_LOCK_NORTH = Text.translatable("boathud.option.minimap_lock_north"),
 		TIP_MINIMAP_LOCK_NORTH = Text.translatable("boathud.tooltip.minimap_lock_north"),
-		MINIMAP_PLAYER_SHAPE = Text.translatable("boathud.option.minimap_player_shape"),
-		TIP_MINIMAP_PLAYER_SHAPE = Text.translatable("boathud.tooltip.minimap_player_shape"),
-		SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
+	
+	MINIMAP_ICE_DETECTION_RANGE = Text.translatable("boathud.option.minimap_ice_detection_range"),
+	TIP_MINIMAP_ICE_DETECTION_RANGE = Text.translatable("boathud.tooltip.minimap_ice_detection_range"),
+	MINIMAP_FLAT_ICE = Text.translatable("boathud.option.minimap_flat_ice"),
+	TIP_MINIMAP_FLAT_ICE = Text.translatable("boathud.tooltip.minimap_flat_ice"),
+	MINIMAP_SHOW_OTHER_PLAYERS = Text.translatable("boathud.option.minimap_show_other_players"),
+	TIP_MINIMAP_SHOW_OTHER_PLAYERS = Text.translatable("boathud.tooltip.minimap_show_other_players"),
+	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),
 		TIP_BAR_PACKED = Text.translatable("boathud.tooltip.bar_type.packed"),

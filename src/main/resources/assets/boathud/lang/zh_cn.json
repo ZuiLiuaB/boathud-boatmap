@@ -30,5 +30,13 @@
 	"boathud.option.minimap_player_shape.SQUARE": "方形",
 	"boathud.option.minimap_player_shape.CIRCLE": "圆形",
 	"boathud.tooltip.minimap_player_shape": "选择小地图上玩家指示器的显示形状。",
-	"boathud.option.show_speed_bar": "显示速度条"
+	"boathud.option.show_speed_bar": "显示速度条",
+	"boathud.option.minimap_show_all_heights": "显示所有高度的冰",
+	"boathud.tooltip.minimap_show_all_heights": "启用后将显示玩家上下所有高度的冰道，禁用后只显示玩家所在高度及以下的冰道。",
+	"boathud.option.minimap_ice_detection_range": "冰道检测范围",
+	"boathud.tooltip.minimap_ice_detection_range": "小地图检测冰道的垂直范围，以玩家所在位置为中心。",
+	"boathud.option.minimap_flat_ice": "平板冰显示",
+	"boathud.tooltip.minimap_flat_ice": "启用后，所有冰道将显示为相同亮度，忽略高度差异。",
+	"boathud.option.minimap_show_other_players": "显示其他玩家",
+	"boathud.tooltip.minimap_show_other_players": "启用后，小地图上将显示其他乘船玩家，以蓝色小三角形表示。"
 }

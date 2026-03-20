@@ -34,7 +34,7 @@ public class HudRenderer {
 	
 	// Pre-rendered minimap texture cache
 	private int[] preRenderedMinimap;
-	private int minimapSize = 256;
+	private int minimapSize = 128;
 	private BlockPos lastRenderedPos = null;
 	private int lastRenderedY = 0;
 
@@ -114,13 +114,17 @@ public class HudRenderer {
 		BlockPos playerBlockPos = this.client.player.getBlockPos();
 		float playerYaw = this.client.player.getYaw();
 
-		// Check if cache needs update (player moved)
+		// Check if cache needs update with improved conditions
 		boolean positionChanged = lastRenderedPos == null || 
 			!lastRenderedPos.equals(playerBlockPos) ||
 			lastRenderedY != playerBlockPos.getY();
+		
+		// Only update map if player has moved a significant distance
+		// This reduces unnecessary rendering when player is stationary
+		boolean shouldUpdate = positionChanged;
 
-		// Pre-render map to array if position changed
-		if(positionChanged) {
+		// Pre-render map to array if needed
+		if(shouldUpdate) {
 			preRenderMinimap(playerBlockPos);
 			lastRenderedPos = playerBlockPos;
 			lastRenderedY = playerBlockPos.getY();
@@ -136,39 +140,50 @@ public class HudRenderer {
 		int renderedSize = (int)(minimapSize * scale);
 		int renderedHalfSize = renderedSize / 2;
 
-		// Draw minimap background
-		graphics.fill(posX, posY, posX + renderedSize, posY + renderedSize, 0x40000000);
-
 		// Calculate center position
 		int centerX = posX + renderedHalfSize;
 		int centerY = posY + renderedHalfSize;
+
+		// Draw circular minimap background
+		int radius = renderedSize / 2;
+		// Use custom circle drawing since fillEllipse is not available
+		drawCircleFill(graphics, centerX, centerY, radius, 0x40000000);
 
 		// Apply rotation using matrix stack
 		graphics.getMatrices().push();
 		graphics.getMatrices().translate(centerX, centerY, 0);
 
-		// Smooth rotation using lerp
-		float targetYaw = -playerYaw;
-		float smoothFactor = 0.1f; // Adjust for smoother rotation
-		
-		// Calculate shortest rotation path
-		float yawDiff = targetYaw - minimapCache.smoothYaw;
-		if(yawDiff > 180.0f) {
-			yawDiff -= 360.0f;
-		} else if(yawDiff < -180.0f) {
-			yawDiff += 360.0f;
+		// Apply rotation only if not locked to north
+		if(!Config.minimapLockNorth) {
+			// Calculate target rotation angle to match player's forward direction
+			// When player looks forward, map should show forward direction correctly
+			// Fixing direction by adjusting rotation calculation
+			float targetYaw = playerYaw + 180.0f; // Add 180 degrees to get correct forward direction
+			float smoothFactor = 0.1f; // Adjust for smoother rotation
+			
+			// Calculate shortest rotation path
+			float yawDiff = targetYaw - minimapCache.smoothYaw;
+			if(yawDiff > 180.0f) {
+				yawDiff -= 360.0f;
+			} else if(yawDiff < -180.0f) {
+				yawDiff += 360.0f;
+			}
+			
+			// Apply lerp to get smooth yaw
+			minimapCache.smoothYaw += yawDiff * smoothFactor;
+			
+			// Rotate map to match player's view direction with smooth rotation
+			// Minecraft yaw increases clockwise, OpenGL rotation is counter-clockwise, so invert
+			float rotation = (float)Math.toRadians(-minimapCache.smoothYaw);
+			// Use Quaternionf for rotation in Minecraft 1.21.3
+			Quaternionf quaternion = new Quaternionf().rotateZ(rotation);
+			graphics.getMatrices().multiply(quaternion);
+		} else {
+			// Locked to north, so no rotation needed
+			minimapCache.smoothYaw = 0.0f; // Reset smooth yaw to north
 		}
-		
-		// Apply lerp to get smooth yaw
-		minimapCache.smoothYaw += yawDiff * smoothFactor;
-		
-		// Rotate map to match player's view direction with smooth rotation
-		float rotation = (float)Math.toRadians(minimapCache.smoothYaw);
-		// Use Quaternionf for rotation in Minecraft 1.21.3
-		Quaternionf quaternion = new Quaternionf().rotateZ(rotation);
-		graphics.getMatrices().multiply(quaternion);
 
-		// Draw ice blocks with rotation applied
+		// Draw ice blocks with rotation applied, only within circular area
 		if(preRenderedMinimap != null) {
 			for(int x = 0; x < minimapSize; x++) {
 				for(int z = 0; z < minimapSize; z++) {
@@ -179,8 +194,11 @@ public class HudRenderer {
 					double relX = (x - (double) minimapSize / 2 + 0.5) * scale;
 					double relZ = (z - (double) minimapSize / 2 + 0.5) * scale;
 
-					// Draw the pixel with rotation applied
-					graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, color);
+					// Check if pixel is within circle radius
+					if(relX * relX + relZ * relZ <= radius * radius) {
+						// Draw the pixel with rotation applied
+						graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, color);
+					}
 				}
 			}
 		}
@@ -192,43 +210,30 @@ public class HudRenderer {
 		minimapCache.iceCache.clear();
 		minimapCache.needsUpdate = false;
 
-		// Draw player indicator at center with configurable shape
-		int indicatorSize = (int)(5 * scale);
+		// Draw player indicator at center - upward pointing triangle
+		int indicatorSize = (int)(3 * scale); // Size for triangle
+		int triangleHeight = (int)(indicatorSize * 1.5);
 		
-		// Draw player indicator
-		if(Config.minimapSquare) {
-			// Square shape with black border
-			// Draw black border
-			graphics.fill(centerX - indicatorSize - 1, centerY - indicatorSize - 1, 
-			              centerX + indicatorSize + 2, centerY + indicatorSize + 2, 0xFF000000);
-			// Draw red square
-			graphics.fill(centerX - indicatorSize, centerY - indicatorSize, 
-			              centerX + indicatorSize + 1, centerY + indicatorSize + 1, 0xFFFF0000);
-		} else {
-			// Circle shape with black border (default)
-			// Draw black border circle
-			for(int dx = -indicatorSize - 1; dx <= indicatorSize + 1; dx++) {
-				for(int dy = -indicatorSize - 1; dy <= indicatorSize + 1; dy++) {
-					if(dx * dx + dy * dy <= (indicatorSize + 1) * (indicatorSize + 1)) {
-						graphics.fill(centerX + dx, centerY + dy, centerX + dx + 1, centerY + dy + 1, 0xFF000000);
-					}
-				}
-			}
-			// Draw red circle
-			for(int dx = -indicatorSize; dx <= indicatorSize; dx++) {
-				for(int dy = -indicatorSize; dy <= indicatorSize; dy++) {
-					if(dx * dx + dy * dy <= indicatorSize * indicatorSize) {
-						graphics.fill(centerX + dx, centerY + dy, centerX + dx + 1, centerY + dy + 1, 0xFFFF0000);
-					}
-				}
-			}
-		}
+		// Draw black border triangle (slightly larger)
+		int borderSize = 1;
+		// Custom triangle drawing since fillTriangle is not available
+		drawTriangle(graphics, 
+			centerX, centerY - triangleHeight - borderSize, // Top point
+			centerX - indicatorSize - borderSize, centerY + borderSize, // Bottom left
+			centerX + indicatorSize + borderSize, centerY + borderSize, // Bottom right
+			0xFF000000); // Black border
+		
+		// Draw red filled triangle
+		drawTriangle(graphics, 
+			centerX, centerY - triangleHeight, // Top point
+			centerX - indicatorSize, centerY, // Bottom left
+			centerX + indicatorSize, centerY, // Bottom right
+			0xFFFF0000); // Red color
 
 		// Draw direction indicator (north arrow)
 		graphics.getMatrices().push();
-		graphics.getMatrices().translate(centerX, centerY - renderedHalfSize + 10, 0);
-		// Use smooth yaw for the direction indicator as well
-		// Use Quaternionf for rotation in Minecraft 1.21.3
+		graphics.getMatrices().translate(centerX, centerY - radius + 10, 0);
+		// Direction indicator should always point north, so rotate opposite to map rotation
 		float arrowRotation = (float)Math.toRadians(-minimapCache.smoothYaw);
 		Quaternionf arrowQuaternion = new Quaternionf().rotateZ(arrowRotation);
 		graphics.getMatrices().multiply(arrowQuaternion);
@@ -237,106 +242,178 @@ public class HudRenderer {
 		graphics.fill(-3, 0, 3, 2, 0xFFFFFF);
 		graphics.getMatrices().pop();
 
-		// Draw minimap border
-		graphics.fill(posX, posY, posX + renderedSize, posY + 1, 0xFFFFFFFF); // Top
-		graphics.fill(posX, posY + renderedSize - 1, posX + renderedSize, posY + renderedSize, 0xFFFFFFFF); // Bottom
-		graphics.fill(posX, posY, posX + 1, posY + renderedSize, 0xFFFFFFFF); // Left
-		graphics.fill(posX + renderedSize - 1, posY, posX + renderedSize, posY + renderedSize, 0xFFFFFFFF); // Right
+		// Draw other players in boats if enabled
+		if(Config.minimapShowOtherPlayers) {
+			drawOtherPlayers(graphics, centerX, centerY, playerBlockPos, scale);
+		}
+
+		// Draw circular minimap border - black thin border
+		int borderThickness = 1;
+		drawCircle(graphics, centerX, centerY, radius + borderThickness, 0xFF000000);
+		drawCircle(graphics, centerX, centerY, radius, 0xFF000000);
 	}
 	
-	/** Pre-renders the minimap to an integer array with circular mask (from NFS mod) */
+	/** Pre-renders the minimap to an integer array with performance optimizations */
 	private void preRenderMinimap(BlockPos playerBlockPos) {
 		if(this.client.world == null) return;
 		
 		preRenderedMinimap = new int[minimapSize * minimapSize];
 		int centerX = minimapSize / 2;
 		int centerZ = minimapSize / 2;
-		float radius = ((float) minimapSize / 2) - 1; // Circular mask radius
-		int renderDistance = minimapSize / 2; // Blocks to render around the player
+		int playerY = playerBlockPos.getY();
 		
-		// First pass: Render ice blocks to array with improved detection
+		// Render ice blocks to array with performance optimizations
+		// Ensure we render the entire rectangular area without circular mask
 		for(int x = 0; x < minimapSize; x++) {
 			for(int z = 0; z < minimapSize; z++) {
 				// Calculate world coordinates
 				int worldX = playerBlockPos.getX() + (x - centerX);
 				int worldZ = playerBlockPos.getZ() + (z - centerZ);
 				
-				// Check distance from player (circular mask during pre-render)
-				double dx = x - centerX;
-				double dz = z - centerZ;
-				double distance = Math.sqrt(dx * dx + dz * dz);
+				int bestColor = 0;
+				boolean foundIce = false;
 				
-				if(distance > radius) {
-					preRenderedMinimap[x + z * minimapSize] = 0; // Transparent outside circle
-					continue;
+				// Check current Y level first (most common case)
+				BlockPos currentPos = new BlockPos(worldX, playerY + Config.minimapYOffset, worldZ);
+				BlockState currentState = this.client.world.getBlockState(currentPos);
+				Block currentBlock = currentState.getBlock();
+				
+				// Check if it's an ice block and has transparent block above
+				if(isIceBlock(currentBlock) && hasTransparentAbove(currentPos.up())) {
+					bestColor = calculateIceColor(0, playerY);
+					foundIce = true;
 				}
 				
-				// Check blocks at different Y levels for better coverage
-				int bestAlpha = 0;
-				int bestColor = 0;
-				
-				// Check current Y level and nearby levels
-				for(int yOffset = -2; yOffset <= 2; yOffset++) {
-					BlockPos blockPos = new BlockPos(worldX, playerBlockPos.getY() + Config.minimapYOffset + yOffset, worldZ);
-					BlockState blockState = this.client.world.getBlockState(blockPos);
-					Block block = blockState.getBlock();
-					
-					// Check if it's an ice block we want to render
-					if(block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE) {
-						// Calculate Y difference for transparency
-						int yDiff = Math.abs(blockPos.getY() - playerBlockPos.getY());
-						float alphaFactor = 1.0f - (yDiff / 10.0f);
-						alphaFactor = MathHelper.clamp(alphaFactor, 0.2f, 1.0f);
+				// If not found, check below player level
+				if(!foundIce) {
+					for(int yOffset = -1; yOffset >= -Config.minimapIceDetectionRange; yOffset--) {
+						BlockPos blockPos = new BlockPos(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+						BlockState blockState = this.client.world.getBlockState(blockPos);
+						Block block = blockState.getBlock();
 						
-						// Different ice types have different brightness
-						float brightness;
-						if(block == Blocks.BLUE_ICE) {
-							brightness = 1.0f; // Blue ice is brightest
-						} else if(block == Blocks.PACKED_ICE) {
-							brightness = 0.9f; // Packed ice is slightly less bright
-						} else {
-							brightness = 0.8f; // Regular ice is least bright
-						}
-						
-						// Combine brightness with alpha factor
-						int alpha = (int)(255 * alphaFactor);
-						int gray = (int)(brightness * 255);
-						
-						// Calculate final color
-						int color = (alpha << 24) | (gray << 16) | (gray << 8) | gray;
-						
-						// Keep the most visible ice block (highest alpha)
-						if(alpha > bestAlpha) {
-							bestAlpha = alpha;
-							bestColor = color;
+						if(isIceBlock(block) && hasTransparentAbove(blockPos.up())) {
+							bestColor = calculateIceColor(yOffset, playerY);
+							foundIce = true;
+							break; // Found ice, no need to check further
 						}
 					}
 				}
 				
+				// If still not found, check above player level if enabled
+				if(!foundIce && Config.minimapShowAllHeights) {
+					for(int yOffset = 1; yOffset <= Config.minimapIceDetectionRange; yOffset++) {
+						BlockPos blockPos = new BlockPos(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+						BlockState blockState = this.client.world.getBlockState(blockPos);
+						Block block = blockState.getBlock();
+						
+						if(isIceBlock(block) && hasTransparentAbove(blockPos.up())) {
+							bestColor = calculateIceColor(yOffset, playerY);
+							foundIce = true;
+							break; // Found ice, no need to check further
+						}
+					}
+				}
+				
+				// Store the color for this position (will be transparent if no ice found)
 				preRenderedMinimap[x + z * minimapSize] = bestColor;
 			}
 		}
+	}
+	
+	/** Check if the block is an ice block we want to render */
+	private boolean isIceBlock(Block block) {
+		return block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE;
+	}
+	
+	/** Check if the block above is transparent */
+	private boolean hasTransparentAbove(BlockPos pos) {
+		if(this.client.world == null) return false;
+		BlockState state = this.client.world.getBlockState(pos);
+		// In newer Minecraft versions, use isReplaceable instead of getMaterial
+		return state.isAir() || state.isReplaceable();
+	}
+	
+	/** Calculate the color of ice based on its Y offset from player */
+	private int calculateIceColor(int yOffset, int playerY) {
+		// Check if flat ice mode is enabled
+		if(Config.minimapFlatIce) {
+			// Show all ice with the same brightness, ignoring height differences
+			return 0xFFCCCCCC; // Solid white color for flat ice mode
+		}
 		
-		// Second pass: Apply smooth edges to the circular mask
-		for(int x = 0; x < minimapSize; x++) {
-			for(int z = 0; z < minimapSize; z++) {
-				double dx = x - centerX;
-				double dz = z - centerZ;
-				double distance = Math.sqrt(dx * dx + dz * dz);
+		// Calculate Y difference from player's current height (signed, for height-based brightness)
+		int yDiff = yOffset;
+		
+		// Calculate alpha based on vertical distance
+		float alphaFactor;
+		if(yDiff <= 0) {
+			// Ice below or at player level: more visible
+			alphaFactor = 1.0f - (Math.abs(yDiff) / 15.0f);
+		} else {
+			// Ice above player level: less visible
+			alphaFactor = 0.6f - (yDiff / 25.0f);
+		}
+		alphaFactor = MathHelper.clamp(alphaFactor, 0.2f, 1.0f);
+		
+		// Calculate brightness based on height difference (lower = darker)
+		float brightness;
+		if(yDiff <= 0) {
+			// Ice below or at player level: brighter at player level, darker as it gets lower
+			brightness = 1.0f - (Math.abs(yDiff) / 20.0f);
+		} else {
+			// Ice above player level: less bright
+			brightness = 0.7f - (yDiff / 30.0f);
+		}
+		brightness = MathHelper.clamp(brightness, 0.3f, 1.0f);
+		
+		// Combine brightness with alpha factor
+		int alpha = (int)(255 * alphaFactor);
+		int gray = (int)(brightness * 255);
+		
+		// Calculate final color
+		return (alpha << 24) | (gray << 16) | (gray << 8) | gray;
+	}
+	
+	/** Draw other players in boats on the minimap as blue small triangles */
+	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, BlockPos playerBlockPos, double scale) {
+		if(this.client.world == null) return;
+		
+		// Get all players in the world
+		for(net.minecraft.entity.player.PlayerEntity otherPlayer : this.client.world.getPlayers()) {
+			// Skip the local player
+			if(otherPlayer == this.client.player) continue;
+			
+			// Check if player is in a boat
+			if(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity) {
+				// Calculate player's position relative to the local player
+				BlockPos otherBlockPos = otherPlayer.getBlockPos();
 				
-				int index = x + z * minimapSize;
-				int color = preRenderedMinimap[index];
-				int alpha = (color >>> 24) & 0xFF;
+				// Calculate relative coordinates
+				int relX = otherBlockPos.getX() - playerBlockPos.getX();
+				int relZ = otherBlockPos.getZ() - playerBlockPos.getZ();
 				
-				// Apply smooth circular edge
-				if(alpha > 0 && distance > radius - 3) {
-					float edgeAlpha = (float)((radius - distance) / 3.0);
-					edgeAlpha = MathHelper.clamp(edgeAlpha, 0.0f, 1.0f);
-					int newAlpha = (int)(alpha * edgeAlpha);
-					if(newAlpha < 5) newAlpha = 0;
-					int gray = color & 0xFF;
-					preRenderedMinimap[index] = (newAlpha << 24) | (gray << 16) | (gray << 8) | gray;
-				}
+				// Calculate screen coordinates with scale
+				int screenX = centerX + (int)(relX * scale);
+				int screenY = centerY + (int)(relZ * scale);
+				
+				// Draw blue small triangle for other player
+				int indicatorSize = (int)(2 * scale); // Smaller than local player
+				int triangleHeight = (int)(indicatorSize * 1.5);
+				int borderSize = 1;
+				
+				// Draw black border triangle (slightly larger)
+				drawTriangle(graphics, 
+					screenX, screenY - triangleHeight - borderSize, // Top point
+					screenX - indicatorSize - borderSize, screenY + borderSize, // Bottom left
+					screenX + indicatorSize + borderSize, screenY + borderSize, // Bottom right
+					0xFF000000); // Black border
+				
+				// Draw blue filled triangle
+				drawTriangle(graphics, 
+					screenX, screenY - triangleHeight, // Top point
+					screenX - indicatorSize, screenY, // Bottom left
+					screenX + indicatorSize, screenY, // Bottom right
+					0xFF0000FF); // Blue color
 			}
 		}
 	}
@@ -380,6 +457,86 @@ public class HudRenderer {
 	/** Renders a piece of text centered horizontally on an X coordinate. */
 	private void typeCentered(DrawContext graphics, String text, int centerX, int y, int color) {
 		graphics.drawTextWithShadow(this.client.textRenderer, text, centerX - this.client.textRenderer.getWidth(text) / 2, y, color);
+	}
+	
+	/** Custom triangle drawing method since fillTriangle is not available in DrawContext */
+	private void drawTriangle(DrawContext graphics, int x1, int y1, int x2, int y2, int x3, int y3, int color) {
+		// Sort vertices by y-coordinate
+		if (y1 > y2) { int temp = y1; y1 = y2; y2 = temp; temp = x1; x1 = x2; x2 = temp; }
+		if (y1 > y3) { int temp = y1; y1 = y3; y3 = temp; temp = x1; x1 = x3; x3 = temp; }
+		if (y2 > y3) { int temp = y2; y2 = y3; y3 = temp; temp = x2; x2 = x3; x3 = temp; }
+		
+		// Calculate slopes
+		float slope1 = (y2 - y1) == 0 ? 0 : (float)(x2 - x1) / (y2 - y1);
+		float slope2 = (y3 - y1) == 0 ? 0 : (float)(x3 - x1) / (y3 - y1);
+		float slope3 = (y3 - y2) == 0 ? 0 : (float)(x3 - x2) / (y3 - y2);
+		
+		// Draw top half
+		float xLeft = x1;
+		float xRight = x1;
+		for (int y = y1; y <= y2; y++) {
+			int left = Math.round(xLeft);
+			int right = Math.round(xRight);
+			if (left <= right) {
+				graphics.fill(left, y, right + 1, y + 1, color);
+			}
+			xLeft += slope1;
+			xRight += slope2;
+		}
+		
+		// Draw bottom half
+		xLeft = x2;
+		for (int y = y2; y <= y3; y++) {
+			int left = Math.round(xLeft);
+			int right = Math.round(xRight);
+			if (left <= right) {
+				graphics.fill(left, y, right + 1, y + 1, color);
+			}
+			xLeft += slope3;
+			xRight += slope2;
+		}
+	}
+
+	/** Custom circle drawing methods since fillEllipse and drawEllipse are not available in DrawContext */
+	
+	/** Draw a filled circle */
+	private void drawCircleFill(DrawContext graphics, int centerX, int centerY, int radius, int color) {
+		// Simple implementation using rectangle fills
+		// This will draw a solid circle without horizontal lines
+		for (int y = -radius; y <= radius; y++) {
+			for (int x = -radius; x <= radius; x++) {
+				if (x * x + y * y <= radius * radius) {
+					graphics.fill(centerX + x, centerY + y, centerX + x + 1, centerY + y + 1, color);
+				}
+			}
+		}
+	}
+
+	/** Draw a circle outline */
+	private void drawCircle(DrawContext graphics, int centerX, int centerY, int radius, int color) {
+		int x = radius;
+		int y = 0;
+		int radiusError = 1 - x;
+
+		while (x >= y) {
+			// Draw pixels in all octants
+			graphics.fill(centerX + x, centerY + y, centerX + x + 1, centerY + y + 1, color);
+			graphics.fill(centerX + y, centerY + x, centerX + y + 1, centerY + x + 1, color);
+			graphics.fill(centerX - x, centerY + y, centerX - x + 1, centerY + y + 1, color);
+			graphics.fill(centerX - y, centerY + x, centerX - y + 1, centerY + x + 1, color);
+			graphics.fill(centerX - x, centerY - y, centerX - x + 1, centerY - y + 1, color);
+			graphics.fill(centerX - y, centerY - x, centerX - y + 1, centerY - x + 1, color);
+			graphics.fill(centerX + x, centerY - y, centerX + x + 1, centerY - y + 1, color);
+			graphics.fill(centerX + y, centerY - x, centerX + y + 1, centerY - x + 1, color);
+
+			y++;
+			if (radiusError < 0) {
+				radiusError += 2 * y + 1;
+			} else {
+				x--;
+				radiusError += 2 * (y - x + 1);
+			}
+		}
 	}
 
 	private static final Identifier
