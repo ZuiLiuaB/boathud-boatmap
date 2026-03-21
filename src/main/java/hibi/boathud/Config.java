@@ -46,6 +46,34 @@ public class Config {
 	/** Controls how strongly the camera is moved (higher means more inertia). */
 	public static float cameraSmoothing = 0.45f;
 
+	// Minimap settings
+	/** Controls whether or not the minimap should be displayed. */
+	public static boolean minimapEnabled = true;
+	/** X position of the minimap. */
+	public static int minimapX = 10;
+	/** Y position of the minimap. */
+	public static int minimapY = 10;
+	/** Y-axis offset for the minimap. */
+	public static int minimapYOffset = 0;
+	/** Whether to show all ice heights or only ice at or below player level. */
+	public static boolean minimapShowAllHeights = false;
+	/** Whether the minimap should lock to north or follow player rotation. */
+	public static boolean minimapLockNorth = true;
+	/** Ice detection range (blocks above and below player). */
+	public static int minimapIceDetectionRange = 3;
+	/** Whether to show all ice with the same brightness, ignoring height differences. */
+	public static boolean minimapFlatIce = false;
+	/** Whether to show other players in boats on the minimap. */
+	public static boolean minimapShowOtherPlayers = true;
+	/** Size of the minimap in pixels (higher = more detailed but more resource intensive). */
+	public static int minimapSize = 128;
+	/** Zoom level for the minimap (controls how much world area is shown). Higher values = more zoomed out. */
+	public static double minimapZoom = 1.0d;
+	/** Size of the local player indicator on the minimap. */
+	public static double minimapPlayerIndicatorSize = 3.0d;
+	/** Size of other players' indicators on the minimap. */
+	public static double minimapOtherPlayersIndicatorSize = 2.0d;
+
 	private Config() {}
 
 	/**
@@ -77,11 +105,51 @@ public class Config {
 				cameraControl = Boolean.parseBoolean(val);
 			}
 			if(prop.get("cameraAggressiveness") instanceof String val) {
-				cameraAggressiveness = Float.parseFloat(val);
-			}
-			if(prop.get("cameraSmoothing") instanceof String val) {
-				cameraSmoothing = Float.parseFloat(val);
-			}
+		cameraAggressiveness = Float.parseFloat(val);
+	}
+	if(prop.get("cameraSmoothing") instanceof String val) {
+		cameraSmoothing = Float.parseFloat(val);
+	}
+	// Minimap settings
+	if(prop.get("minimapEnabled") instanceof String val) {
+		minimapEnabled = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapX") instanceof String val) {
+		minimapX = Integer.parseInt(val);
+	}
+	if(prop.get("minimapY") instanceof String val) {
+		minimapY = Integer.parseInt(val);
+	}
+	if(prop.get("minimapYOffset") instanceof String val) {
+		minimapYOffset = Integer.parseInt(val);
+	}
+	if(prop.get("minimapShowAllHeights") instanceof String val) {
+		minimapShowAllHeights = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapLockNorth") instanceof String val) {
+		minimapLockNorth = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapIceDetectionRange") instanceof String val) {
+		minimapIceDetectionRange = Integer.parseInt(val);
+	}
+	if(prop.get("minimapFlatIce") instanceof String val) {
+		minimapFlatIce = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapShowOtherPlayers") instanceof String val) {
+		minimapShowOtherPlayers = Boolean.parseBoolean(val);
+	}
+	if(prop.get("minimapSize") instanceof String val) {
+		minimapSize = Integer.parseInt(val);
+	}
+	if(prop.get("minimapZoom") instanceof String val) {
+		minimapZoom = Double.parseDouble(val);
+	}
+	if(prop.get("minimapPlayerIndicatorSize") instanceof String val) {
+		minimapPlayerIndicatorSize = Double.parseDouble(val);
+	}
+	if(prop.get("minimapOtherPlayersIndicatorSize") instanceof String val) {
+		minimapOtherPlayersIndicatorSize = Double.parseDouble(val);
+	}
 		}
 		catch (Exception e) {
 			// Empty catch block
@@ -106,11 +174,25 @@ public class Config {
 			writer.write("barType " + Integer.toString(barType) + "\n");
 			writer.write("speedUnit " + Integer.toString(configSpeedType) + "\n");
 			writer.write("cameraControl " + Boolean.toString(cameraControl) + "\n");
-			writer.write("cameraAggressiveness " + Float.toString(cameraAggressiveness) + "\n");
-			writer.write("cameraSmoothing " + Float.toString(cameraSmoothing) + "\n");
-			writer.close();
+	writer.write("cameraAggressiveness " + Float.toString(cameraAggressiveness) + "\n");
+	writer.write("cameraSmoothing " + Float.toString(cameraSmoothing) + "\n");
+	// Minimap settings
+	writer.write("minimapEnabled " + Boolean.toString(minimapEnabled) + "\n");
+	writer.write("minimapX " + Integer.toString(minimapX) + "\n");
+	writer.write("minimapY " + Integer.toString(minimapY) + "\n");
+	writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
+	writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
+	writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
+	writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
+	writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
+	writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
+	writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
+	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
+	writer.write("minimapPlayerIndicatorSize " + Double.toString(minimapPlayerIndicatorSize) + "\n");
+	writer.write("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize) + "\n");
+	writer.close();
 		}
-		catch (Exception e) {
+		catch (Exception ignored) {
 		}
 	}
 

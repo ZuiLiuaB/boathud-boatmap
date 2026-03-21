@@ -18,19 +18,20 @@ public class Common implements ClientModInitializer {
 		hudRenderer = new HudRenderer(client);
 		Config.load();
 		ClientTickEvents.END_WORLD_TICK.register(clientWorld -> {
-			if(client.player == null) return;
-			if(client.player.getVehicle() instanceof AbstractBoat boat && boat.getFirstPassenger() == client.player) {
-				if (hudData == null) {
-					hudData = new HudData();
-				}
-				hudData.update();
+		if(client.player == null) return;
+		if(client.player.getVehicle() instanceof AbstractBoat boat && boat.getFirstPassenger() == client.player) {
+			if (hudData == null) {
+				hudData = new HudData();
 			}
-			else {
-				if (ridingBoat) {
-					ridingBoat = false;
-				}
+			hudData.update();
+			ridingBoat = true;
+		}
+		else {
+			if (ridingBoat) {
+				ridingBoat = false;
 			}
-		});
+		}
+	});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if(client.player == null) return;
 			if(!Config.cameraControl) return;
