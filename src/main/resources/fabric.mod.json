@@ -1,0 +1,46 @@
+{
+    "schemaVersion": 1,
+    "id": "boathud",
+    "version": "${version}",
+
+    "name": "BoatHud",
+    "description": "This mod adds a racing style HUD, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
+    "authors": [
+        "hibi"
+    ],
+    "contact": {
+        "homepage": "https://hibiscus.pet/mods/boathud",
+        "sources": "https://github.com/Hibiii/BoatHud",
+        "issues": "https://github.com/Hibiii/BoatHud/issues"
+    },
+
+    "license": "Unlicense",
+    "icon": "assets/boathud/icon.png",
+
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "hibi.boathud.Common"
+        ],
+        "modmenu": [
+            "hibi.boathud.MenuInteg"
+        ]
+    },
+    "mixins": [
+        "boathud.mixins.json"
+    ],
+    "depends": {
+        "fabric-api": "*",
+        "minecraft": ">=1.21.11",
+        "cloth-config2": ">=21.0.0"
+    },
+    "custom": {
+        "modmenu": {
+            "links": {
+                "modmenu.github_releases": "https://github.com/Hibiii/BoatHud/releases",
+                "modmenu.curseforge": "https://www.curseforge.com/minecraft/mc-mods/boathud",
+                "modmenu.modrinth": "https://modrinth.com/mod/boathud/"
+            }
+        }
+    }
+}
