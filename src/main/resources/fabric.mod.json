@@ -11,8 +11,8 @@
     ],
     "contact": {
         "homepage": "https://zuiliuab.github.io/",
-        "sources": "https://github.com/ZuiLiuaB/boathud-map",
-        "issues": "https://github.com/ZuiLiuaB/boathud-map/issues"
+        "sources": "https://github.com/ZuiLiuaB/boathud-boatmap",
+        "issues": "https://github.com/ZuiLiuaB/boathud-boatmap/issues"
     },
 
     "license": "Unlicense",
@@ -38,7 +38,7 @@
     "custom": {
         "modmenu": {
             "links": {
-                "modmenu.github_releases": "https://github.com/ZuiLiuaB/boathud-map/releases",
+                "modmenu.github_releases": "https://github.com/ZuiLiuaB/boathud-boatmap/releases",
                 "modmenu.curseforge": "None",
                 "modmenu.modrinth": "None"
             }
