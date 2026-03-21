@@ -26,19 +26,13 @@ public class HudRenderer {
 	// Cache for minimap to avoid recalculating every frame
 	// Make this non-static to avoid memory leaks when the HUD renderer is recreated
 	private class MinimapCache {
-		BlockPos lastPlayerPos = null;
-		int lastPlayerY = 0;
-		float lastYaw = 0f;
-		float smoothYaw = 0f; // For smooth rotation
-		Map<BlockPos, Integer> iceCache = new HashMap<>();
-		boolean needsUpdate = true;
+		float smoothYaw = 0f; // Only keep smooth rotation value, no other unnecessary state
 	}
 	private MinimapCache minimapCache = new MinimapCache();
 	
 	// Pre-rendered minimap texture cache
+	// Only keep one pre-rendered array at a time to minimize memory usage
 	private int[] preRenderedMinimap;
-	private BlockPos lastRenderedPos = null;
-	private int lastRenderedY = 0;
 
 	// The index to be used in these scales is the bar type (stored internally as an integer, defined in Config)
 	//                                        Pack     Mixed      Blue
@@ -57,12 +51,17 @@ public class HudRenderer {
 		this.scaledWidth = this.client.getWindow().getScaledWidth();
 		this.scaledHeight = this.client.getWindow().getScaledHeight();
 		int i = this.scaledWidth / 2;
-		int nameLen = this.client.textRenderer.getWidth(Common.hudData.name);
-	
+		
+		// Get HUD data from Common instance
+		HudData hudData = Common.getInstance().getHudData();
+		if(hudData == null) return;
+		
+		int nameLen = this.client.textRenderer.getWidth(hudData.name);
+		
 		// Lerping the displayed speed with the actual speed against how far we are into the tick not only is mostly accurate,
 		// but gives the impression that it's being updated faster than 20 hz (which it isn't)
-		this.displayedSpeed = MathHelper.lerp(counter.getTickDelta(false), this.displayedSpeed, Common.hudData.speed);
-	
+		this.displayedSpeed = MathHelper.lerp(counter.getTickDelta(false), this.displayedSpeed, hudData.speed);
+
 		if(Config.extended) {
 				// Overlay texture and bar
 				graphics.drawGuiTexture(RenderLayer::getGuiTextured, BACKGROUND_EXTENDED, i - 91, this.scaledHeight - 83, 182, 33);
@@ -70,24 +69,26 @@ public class HudRenderer {
 				this.renderBar(graphics, i - 91, this.scaledHeight - 83);
 
 				// Sprites
-			if(Common.hudData.isDriver) {
-				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.leftKey.isPressed()? LEFT_LIT : LEFT_UNLIT, i - 86, this.scaledHeight - 65, 17, 8);
-				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.rightKey.isPressed()? RIGHT_LIT : RIGHT_UNLIT, i - 63, this.scaledHeight - 65, 17, 8);
-				// Brake-throttle bar
-				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.forwardKey.isPressed()? FORWARD_LIT : FORWARD_UNLIT, i, this.scaledHeight - 55, 61, 5);
-				graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.backKey.isPressed()? BACKWARD_LIT : BACKWARD_UNLIT, i - 61, this.scaledHeight - 55, 61, 5);
-			}
-	
-			// Ping
-			this.renderPing(graphics, i + 75 - nameLen, this.scaledHeight - 65);
-					
-			// Text
-			// First Row
-			this.typeCentered(graphics, String.format(Config.speedFormat, this.displayedSpeed * Config.speedRate), i - 58, this.scaledHeight - 76, 0xFFFFFF);
-			this.typeCentered(graphics, String.format(Config.angleFormat, Common.hudData.driftAngle), i, this.scaledHeight - 76, 0xFFFFFF);
-			this.typeCentered(graphics, String.format(Config.gFormat, Common.hudData.g), i + 58, this.scaledHeight - 76, 0xFFFFFF);
-			// Second Row
-			graphics.drawTextWithShadow(this.client.textRenderer, Common.hudData.name, i + 88 - nameLen, this.scaledHeight - 65, 0xFFFFFF);
+				if(Common.getInstance().getHudData() != null && Common.getInstance().getHudData().isDriver) {
+					graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.leftKey.isPressed()? LEFT_LIT : LEFT_UNLIT, i - 86, this.scaledHeight - 65, 17, 8);
+					graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.rightKey.isPressed()? RIGHT_LIT : RIGHT_UNLIT, i - 63, this.scaledHeight - 65, 17, 8);
+					// Brake-throttle bar
+					graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.forwardKey.isPressed()? FORWARD_LIT : FORWARD_UNLIT, i, this.scaledHeight - 55, 61, 5);
+					graphics.drawGuiTexture(RenderLayer::getGuiTextured, this.client.options.backKey.isPressed()? BACKWARD_LIT : BACKWARD_UNLIT, i - 61, this.scaledHeight - 55, 61, 5);
+				}
+
+				// Ping
+				this.renderPing(graphics, i + 75 - nameLen, this.scaledHeight - 65);
+						
+				// Text
+				// First Row
+				this.typeCentered(graphics, String.format(Config.speedFormat, this.displayedSpeed * Config.speedRate), i - 58, this.scaledHeight - 76, 0xFFFFFF);
+				if(Common.getInstance().getHudData() != null) {
+					this.typeCentered(graphics, String.format(Config.angleFormat, Common.getInstance().getHudData().driftAngle), i, this.scaledHeight - 76, 0xFFFFFF);
+					this.typeCentered(graphics, String.format(Config.gFormat, Common.getInstance().getHudData().g), i + 58, this.scaledHeight - 76, 0xFFFFFF);
+					// Second Row
+					graphics.drawTextWithShadow(this.client.textRenderer, Common.getInstance().getHudData().name, i + 88 - nameLen, this.scaledHeight - 65, 0xFFFFFF);
+				}
 	
 		} else { // Compact mode
 				// Overlay texture and bar
@@ -96,7 +97,7 @@ public class HudRenderer {
 				this.renderBar(graphics, i - 91, this.scaledHeight - 83);
 				// Speed and drift angle
 			this.typeCentered(graphics, String.format(Config.speedFormat, this.displayedSpeed * Config.speedRate), i - 58, this.scaledHeight - 76, 0xFFFFFF);
-			this.typeCentered(graphics, String.format(Config.angleFormat, Common.hudData.driftAngle), i + 58, this.scaledHeight - 76, 0xFFFFFF);
+			this.typeCentered(graphics, String.format(Config.angleFormat, hudData.driftAngle), i + 58, this.scaledHeight - 76, 0xFFFFFF);
 		}
 	
 		// Render minimap if enabled (it will be rendered separately by the mixin if not riding boat)
@@ -115,7 +116,6 @@ public class HudRenderer {
 
 		// Get player position and rotation
 		Vec3d playerPos = cameraEntity.getPos();
-		BlockPos playerBlockPos = cameraEntity.getBlockPos();
 		float playerYaw = cameraEntity.getYaw();
 
 		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
@@ -360,8 +360,7 @@ public class HudRenderer {
 			}
 		}
 		
-		// Clear the ice cache after each render to free memory
-		minimapCache.iceCache.clear();
+
 	}
 	
 	/** Check if the block is an ice block we want to render */
@@ -476,8 +475,12 @@ public class HudRenderer {
 	/** Renders the speed bar atop the HUD, uses displayedSpeed to, well, diisplay the speed. */
 	private void renderBar(DrawContext graphics, int x, int y) {
 		graphics.drawGuiTexture(RenderLayer::getGuiTextured, BAR_OFF[Config.barType], x, y, 182, 5);
-		if(Common.hudData.speed < MIN_V[Config.barType]) return;
-		if(Common.hudData.speed > MAX_V[Config.barType]) {
+		// Get HUD data from Common instance
+		HudData hudData = Common.getInstance().getHudData();
+		if(hudData == null) return;
+		
+		if(hudData.speed < MIN_V[Config.barType]) return;
+		if(hudData.speed > MAX_V[Config.barType]) {
 			if(this.client.world != null && this.client.world.getTime() % 2 == 0) return;
 			graphics.drawGuiTexture(RenderLayer::getGuiTextured, BAR_ON[Config.barType], x, y, 182, 5);
 			return;
@@ -485,22 +488,26 @@ public class HudRenderer {
 		graphics.drawGuiTexture(RenderLayer::getGuiTextured, BAR_ON[Config.barType], 182, 5, 0, 0, x, y, (int)((this.displayedSpeed - MIN_V[Config.barType]) * SCALE_V[Config.barType]), 5);
 	}
 
-	/** Implementation is cloned from the notchian ping display in the tab player list.	 */
+	/** Implementation is cloned from the notchian ping display in the tab player list. */
 	private void renderPing(DrawContext graphics, int x, int y) {
 		Identifier bar = PING_5;
-		if(Common.hudData.ping < 0) {
+		// Get HUD data from Common instance
+		HudData hudData = Common.getInstance().getHudData();
+		if(hudData == null) return;
+		
+		if(hudData.ping < 0) {
 			bar = PING_UNKNOWN;
 		}
-		else if(Common.hudData.ping < 150) {
+		else if(hudData.ping < 150) {
 			bar = PING_5;
 		}
-		else if(Common.hudData.ping < 300) {
+		else if(hudData.ping < 300) {
 			bar = PING_4;
 		}
-		else if(Common.hudData.ping < 600) {
+		else if(hudData.ping < 600) {
 			bar = PING_3;
 		}
-		else if(Common.hudData.ping < 1000) {
+		else if(hudData.ping < 1000) {
 			bar = PING_2;
 		}
 		else {

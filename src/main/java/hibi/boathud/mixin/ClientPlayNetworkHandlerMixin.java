@@ -29,7 +29,10 @@ public class ClientPlayNetworkHandlerMixin {
 	)
 	private void checkBoatEntry(EntityPassengersSetS2CPacket packet, CallbackInfo info) {
 		if(!(world.getEntityById(packet.getEntityId()) instanceof BoatEntity)) return;
-		Common.ridingBoat = true;
-		Common.hudData = new HudData();
+		// Get Common instance
+		Common common = Common.getInstance();
+		if(common == null) return;
+		common.setRidingBoat(true);
+		common.setHudData(new HudData());
 	}
 }
