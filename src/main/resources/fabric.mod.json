@@ -3,15 +3,16 @@
     "id": "boathud",
     "version": "${version}",
 
-    "name": "BoatHud",
-    "description": "This mod adds a racing style HUD, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
+    "name": "Boathud and Map",
+    "description": "This mod adds a racing style HUD and Map, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
     "authors": [
-        "hibi"
+        "hibi",
+        "ZuiLiu_ab"
     ],
     "contact": {
-        "homepage": "https://hibiscus.pet/mods/boathud",
-        "sources": "https://github.com/Hibiii/BoatHud",
-        "issues": "https://github.com/Hibiii/BoatHud/issues"
+        "homepage": "https://zuiliuab.github.io/",
+        "sources": "https://github.com/ZuiLiuaB/boathud-boatmap",
+        "issues": "https://github.com/ZuiLiuaB/boathud-boatmap/issues"
     },
 
     "license": "Unlicense",
@@ -37,9 +38,9 @@
     "custom": {
         "modmenu": {
             "links": {
-                "modmenu.github_releases": "https://github.com/Hibiii/BoatHud/releases",
-                "modmenu.curseforge": "https://www.curseforge.com/minecraft/mc-mods/boathud",
-                "modmenu.modrinth": "https://modrinth.com/mod/boathud/"
+                "modmenu.github_releases": "https://github.com/ZuiLiuaB/boathud-boatmap/releases",
+                "modmenu.curseforge": "None",
+                "modmenu.modrinth": "None"
             }
         }
     }

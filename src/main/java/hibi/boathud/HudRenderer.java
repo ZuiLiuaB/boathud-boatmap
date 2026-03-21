@@ -28,6 +28,10 @@ public class HudRenderer {
 	// Pre-rendered minimap texture cache with size tracking to avoid unnecessary reallocations
 	private int[] preRenderedMinimap;
 	private int lastMinimapSize = -1;
+	
+	// Cache for minimap rendering optimization
+	private Vec3 lastPlayerPos = Vec3.ZERO;
+	private long lastRenderTime = 0;
 
 	// The index to be used in these scales is the bar type (stored internally as an integer, defined in Config)
 	//                                        Pack     Mixed      Blue
@@ -104,8 +108,13 @@ public class HudRenderer {
 		Vec3 playerPos = cameraEntity.position();
 		float playerYaw = cameraEntity.getYRot();
 
-		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
-		preRenderMinimap(playerPos);
+		// Only pre-render the map if player has moved significantly or time has passed
+		long currentTime = System.currentTimeMillis();
+		if(playerPos.distanceToSqr(lastPlayerPos) > 0.5 || currentTime - lastRenderTime > 50) {
+			preRenderMinimap(playerPos);
+			lastPlayerPos = playerPos;
+			lastRenderTime = currentTime;
+		}
 
 		// Calculate minimap position
 		int posX = Config.minimapX;
@@ -160,40 +169,59 @@ public class HudRenderer {
 
 		// Draw ice blocks with rotation applied, only within circular area
 		if(preRenderedMinimap != null) {
+			// Get player's fractional position for smooth scrolling
+			final double playerXFrac = playerPos.x() - Math.floor(playerPos.x());
+			final double playerZFrac = playerPos.z() - Math.floor(playerPos.z());
+			
+			// Pre-calculate values for performance
+			final int mapSize = Config.minimapSize;
+			final double halfSize = mapSize / 2.0;
+			final double radiusSq = radius * radius;
+			final int[] minimapData = preRenderedMinimap;
+			
 			// Combine edge detection and rendering into a single pass for better performance
-			for(int x = 0; x < Config.minimapSize; x++) {
-				for(int z = 0; z < Config.minimapSize; z++) {
-					int color = preRenderedMinimap[x + z * Config.minimapSize];
+			for(int x = 0; x < mapSize; x++) {
+				// Calculate x position with sub-pixel precision using player's fractional offset
+				// Apply player's X fractional offset for smooth scrolling
+				final double pixelX = (x - halfSize + 0.5 - playerXFrac) * scale;
+				final double pixelXSq = pixelX * pixelX;
+				
+				for(int z = 0; z < mapSize; z++) {
+					// Calculate array index
+					final int index = x + z * mapSize;
+					final int color = minimapData[index];
+					
 					if((color >>> 24) == 0) continue; // Skip transparent pixels
 					
-					// Calculate relative position once per pixel
-					double relX = (x - (double) Config.minimapSize / 2 + 0.5) * scale;
-					double relZ = (z - (double) Config.minimapSize / 2 + 0.5) * scale;
+					// Calculate z position with sub-pixel precision using player's fractional offset
+					final double pixelZ = (z - halfSize + 0.5 - playerZFrac) * scale;
 					
 					// Check if pixel is within circle radius
-					if(relX * relX + relZ * relZ > radius * radius) continue;
+					if(pixelXSq + pixelZ * pixelZ > radiusSq) continue;
 					
-					// Check if this is an edge pixel by looking at adjacent pixels
+					// Optimized edge detection - only check 4 cardinal directions
 					boolean isEdge = false;
-					for(int dx = -1; dx <= 1 && !isEdge; dx++) {
-						for(int dz = -1; dz <= 1 && !isEdge; dz++) {
-							if(dx == 0 && dz == 0) continue; // Skip current pixel
-							int nx = x + dx;
-							int nz = z + dz;
-							if(nx >= 0 && nx < Config.minimapSize && nz >= 0 && nz < Config.minimapSize) {
-								int neighborColor = preRenderedMinimap[nx + nz * Config.minimapSize];
-								if((neighborColor >>> 24) == 0) {
-									isEdge = true;
-								}
-							} else {
-								// Edge of the map is considered an edge
-								isEdge = true;
-							}
-						}
+					
+					// Check left neighbor
+					if(x == 0 || (minimapData[(x - 1) + z * mapSize] >>> 24) == 0) {
+						isEdge = true;
+					} 
+					// Check right neighbor
+					else if(x == mapSize - 1 || (minimapData[(x + 1) + z * mapSize] >>> 24) == 0) {
+						isEdge = true;
+					} 
+					// Check top neighbor
+					else if(z == 0 || (minimapData[x + (z - 1) * mapSize] >>> 24) == 0) {
+						isEdge = true;
+					} 
+					// Check bottom neighbor
+					else if(z == mapSize - 1 || (minimapData[x + (z + 1) * mapSize] >>> 24) == 0) {
+						isEdge = true;
 					}
 					
-					int drawX = (int)relX;
-					int drawZ = (int)relZ;
+					// Convert to integer coordinates for drawing, maintaining sub-pixel smoothness
+					final int drawX = (int)pixelX;
+					final int drawZ = (int)pixelZ;
 					
 					// Draw edge pixel with black border first, then regular pixel on top
 					if(isEdge) {
@@ -268,62 +296,73 @@ public class HudRenderer {
 		// Early return if minimap is disabled or size is 0
 		if(currentSize <= 0) return;
 		
-		int centerX = currentSize / 2;
-		int centerZ = currentSize / 2;
-		int playerY = (int)playerPos.y();
-		
-		// Render ice blocks to array with performance optimizations
-		// Ensure we render the entire rectangular area without circular mask
-		
-		// Reuse BlockPos objects to reduce garbage collection
-		BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos();
-		BlockPos.MutableBlockPos abovePos = new BlockPos.MutableBlockPos();
-		
-		// Pre-calculate player position values to avoid repeated calculations
+		// Get player position with fractional precision
 		final double playerX = playerPos.x();
 		final double playerZ = playerPos.z();
+		final int playerY = (int)playerPos.y();
+		
+		// Calculate player position fractional offset for smooth minimap scrolling
+		final double playerXFrac = playerX - Math.floor(playerX);
+		final double playerZFrac = playerZ - Math.floor(playerZ);
+		
+		// Pre-calculate all values that don't change in loops
+		final int centerX = currentSize / 2;
+		final int centerZ = currentSize / 2;
+		final double zoom = Config.minimapZoom;
+		final int yOffset = Config.minimapYOffset;
 		final int minYOffset = -Config.minimapIceDetectionRange;
 		final int maxYOffset = Config.minimapShowAllHeights ? Config.minimapIceDetectionRange : 0;
+		final int[] minimapData = preRenderedMinimap;
+		final var level = this.client.level;
+		
+		// Reuse BlockPos objects to reduce garbage collection
+		final BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos();
+		final BlockPos.MutableBlockPos abovePos = new BlockPos.MutableBlockPos();
 		
 		// Loop through all pixels in the minimap
 		for(int x = 0; x < currentSize; x++) {
-			// Calculate world X once per row
-			double offsetX = (x - centerX) * Config.minimapZoom;
-			int worldX = (int)(playerX + offsetX);
+			// Calculate world coordinates with sub-block precision
+			// Apply player's fractional offset to get smooth scrolling
+			final double offsetX = (x - centerX) * zoom;
+			final double worldX = playerX + offsetX;
 			
 			for(int z = 0; z < currentSize; z++) {
-				// Calculate world Z
-				double offsetZ = (z - centerZ) * Config.minimapZoom;
-				int worldZ = (int)(playerZ + offsetZ);
+				// Calculate world coordinates with sub-block precision
+				final double offsetZ = (z - centerZ) * zoom;
+				final double worldZ = playerZ + offsetZ;
+				final int arrayIndex = x + z * currentSize;
 				
 				int bestColor = 0;
 				boolean foundIce = false;
 				
-				// Check current Y level first (most common case)
-				blockPos.set(worldX, playerY + Config.minimapYOffset, worldZ);
-				abovePos.set(blockPos).move(0, 1, 0);
+				// Set block position with integer coordinates (required for getBlockState)
+				blockPos.set((int)worldX, playerY + yOffset, (int)worldZ);
 				
-				BlockState currentState = this.client.level.getBlockState(blockPos);
-				if(isIceBlock(currentState.getBlock())) {
-					BlockState aboveState = this.client.level.getBlockState(abovePos);
+				// Check block state
+				final BlockState currentState = level.getBlockState(blockPos);
+				final Block block = currentState.getBlock();
+				
+				if(isIceBlock(block)) {
+					// Check if above is air - only do this if we found ice
+					abovePos.set(blockPos).move(0, 1, 0);
+					final BlockState aboveState = level.getBlockState(abovePos);
 					if(aboveState.isAir() || aboveState.canBeReplaced()) {
 						bestColor = calculateIceColor(0, playerY);
 						foundIce = true;
 					}
 				}
 				
-				// If not found, check other Y levels
+				// If not found, check other Y levels with early exit
 				if(!foundIce) {
 					// Check below player level first
-					for(int yOffset = -1; yOffset >= minYOffset && !foundIce; yOffset--) {
-						blockPos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-						abovePos.set(blockPos).move(0, 1, 0);
-						
-						BlockState blockState = this.client.level.getBlockState(blockPos);
-						if(isIceBlock(blockState.getBlock())) {
-							BlockState aboveBlockState = this.client.level.getBlockState(abovePos);
-							if(aboveBlockState.isAir() || aboveBlockState.canBeReplaced()) {
-								bestColor = calculateIceColor(yOffset, playerY);
+					for(int yOff = -1; yOff >= minYOffset && !foundIce; yOff--) {
+						blockPos.set((int)worldX, playerY + yOffset + yOff, (int)worldZ);
+						final BlockState state = level.getBlockState(blockPos);
+						if(isIceBlock(state.getBlock())) {
+							abovePos.set(blockPos).move(0, 1, 0);
+							final BlockState aboveState = level.getBlockState(abovePos);
+							if(aboveState.isAir() || aboveState.canBeReplaced()) {
+								bestColor = calculateIceColor(yOff, playerY);
 								foundIce = true;
 							}
 						}
@@ -331,15 +370,14 @@ public class HudRenderer {
 					
 					// If still not found, check above player level if enabled
 					if(!foundIce && maxYOffset > 0) {
-						for(int yOffset = 1; yOffset <= maxYOffset && !foundIce; yOffset++) {
-							blockPos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-							abovePos.set(blockPos).move(0, 1, 0);
-							
-							BlockState blockState = this.client.level.getBlockState(blockPos);
-							if(isIceBlock(blockState.getBlock())) {
-								BlockState aboveBlockState = this.client.level.getBlockState(abovePos);
-								if(aboveBlockState.isAir() || aboveBlockState.canBeReplaced()) {
-									bestColor = calculateIceColor(yOffset, playerY);
+						for(int yOff = 1; yOff <= maxYOffset && !foundIce; yOff++) {
+							blockPos.set((int)worldX, playerY + yOffset + yOff, (int)worldZ);
+							final BlockState state = level.getBlockState(blockPos);
+							if(isIceBlock(state.getBlock())) {
+								abovePos.set(blockPos).move(0, 1, 0);
+								final BlockState aboveState = level.getBlockState(abovePos);
+								if(aboveState.isAir() || aboveState.canBeReplaced()) {
+									bestColor = calculateIceColor(yOff, playerY);
 									foundIce = true;
 								}
 							}
@@ -347,8 +385,8 @@ public class HudRenderer {
 					}
 				}
 				
-				// Store the color for this position (will be transparent if no ice found)
-				preRenderedMinimap[x + z * currentSize] = bestColor;
+				// Store the color for this position
+				minimapData[arrayIndex] = bestColor;
 			}
 		}
 	}
@@ -440,22 +478,26 @@ public class HudRenderer {
 				float rotatedX = (float)relX * cos - (float)relZ * sin;
 				float rotatedZ = (float)relX * sin + (float)relZ * cos;
 				
-				// Calculate screen coordinates with scale and zoom
-				// Apply zoom factor to relative coordinates to match minimap zoom level
-				int screenX = centerX + (int)(rotatedX * scale / Config.minimapZoom);
-				int screenY = centerY + (int)(rotatedZ * scale / Config.minimapZoom);
+				// Calculate screen coordinates with scale and zoom - use float for precise positioning
+					// Apply zoom factor to relative coordinates to match minimap zoom level
+					float screenX = centerX + (float)(rotatedX * scale / Config.minimapZoom);
+					float screenY = centerY + (float)(rotatedZ * scale / Config.minimapZoom);
 				
 				// Draw blue small square for other player with customizable size
-				int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
-				int borderSize = 1;
-				
-				// Draw black border square (slightly larger)
-				graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
-					screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, 0xFF000000);
-				
-				// Draw blue filled square
-				graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
-					screenX + indicatorSize + 1, screenY + indicatorSize + 1, 0xFF0000FF);
+					int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
+					int borderSize = 1;
+					
+					// Round coordinates to nearest pixel for smooth movement
+					int roundedX = Math.round(screenX);
+					int roundedY = Math.round(screenY);
+					
+					// Draw black border square (slightly larger)
+					graphics.fill(roundedX - indicatorSize - borderSize, roundedY - indicatorSize - borderSize, 
+						roundedX + indicatorSize + borderSize + 1, roundedY + indicatorSize + borderSize + 1, 0xFF000000);
+					
+					// Draw blue filled square
+					graphics.fill(roundedX - indicatorSize, roundedY - indicatorSize, 
+						roundedX + indicatorSize + 1, roundedY + indicatorSize + 1, 0xFF0000FF);
 				
 				playersRendered++;
 			}
