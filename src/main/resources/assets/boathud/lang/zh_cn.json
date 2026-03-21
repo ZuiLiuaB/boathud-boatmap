@@ -43,8 +43,6 @@
 	"boathud.tooltip.minimap_size": "调整小地图的分辨率。数值越高提供更多细节，但会使用更多资源。",
 	"boathud.option.minimap_zoom": "小地图缩放",
 	"boathud.tooltip.minimap_zoom": "调整小地图显示的世界范围。数值越高显示更多区域，数值越低显示更多细节。",
-	"boathud.option.minimap_player_indicator_size": "玩家标识大小",
 	"boathud.tooltip.minimap_player_indicator_size": "调整小地图上玩家自身标识的大小。",
-	"boathud.option.minimap_other_players_indicator_size": "其他玩家标识大小",
 	"boathud.tooltip.minimap_other_players_indicator_size": "调整小地图上其他玩家标识的大小。"
 }
