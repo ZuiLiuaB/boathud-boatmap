@@ -1,5 +1,5 @@
 {
-	"modmenu.descriptionTranslation.boathud": "这个模组增加了一个赛车风格的HUD，可配置，用于乘船，主要是为冰上赛船设计的。",
+	"modmenu.descriptionTranslation.boathud": "这个模组增加了一个赛车风格的HUD与地图，可配置，用于乘船，主要是为冰上赛船设计的。",
 	"modmenu.summaryTranslation.boathud": "别具一格地赛船！",
 	"boathud.config.title": "BoatHud选项",
 	"boathud.option.enabled": "启用仪表盘",
