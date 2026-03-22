@@ -1,5 +1,5 @@
-# BoatHud-map 1.21.4 版本日志
-# BoatHud-map 1.21.4 Release Notes
+# BoatHud-map  版本日志
+# BoatHud-map  Release Notes
 
 ⚠️ **重要警告：不建议与其他小地图模组一起安装，可能会导致游戏崩溃！**
 ⚠️ **Important Warning: Not recommended to install with other minimap mods, may cause game crashes!**
