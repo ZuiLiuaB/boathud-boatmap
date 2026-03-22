@@ -76,8 +76,6 @@
 
 ### 架构改进
 ### Architecture Improvements
-- 🏗️ 参考Xaero Minimap的优秀设计，改进了代码结构
-- 🏗️ Improved code structure by referencing Xaero Minimap's excellent design
 - 💡 实现了单例模式，避免了静态内存泄漏
 - 💡 Implemented singleton pattern, avoiding static memory leaks
 - 🔄 改进了生命周期管理，确保资源正确释放
