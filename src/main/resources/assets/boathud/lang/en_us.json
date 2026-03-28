@@ -42,5 +42,13 @@
 	"boathud.tooltip.bar_type": "Change the display and behavior of the speed bar:",
 	"boathud.tooltip.bar_type.packed": "Water & Packed: Best for low speeds.",
 	"boathud.tooltip.bar_type.mixed": "Mixed: Best for running on any kind of ice.",
-	"boathud.tooltip.bar_type.blue": "Blue: Suitable mostly for blue ice racing."
+	"boathud.tooltip.bar_type.blue": "Blue: Suitable mostly for blue ice racing.",
+	"boathud.option.minimap_player_indicator_size": "Player Indicator Size",
+	"boathud.tooltip.minimap_player_indicator_size": "Adjust the size of the player's own indicator on the minimap.",
+	"boathud.option.minimap_other_players_indicator_size": "Other Players Indicator Size",
+	"boathud.tooltip.minimap_other_players_indicator_size": "Adjust the size of other players' indicators on the minimap.",
+	"boathud.option.minimap_show_other_players_names": "Show Other Players' Names",
+	"boathud.tooltip.minimap_show_other_players_names": "When enabled, displays other players' names on the minimap.",
+	"boathud.option.minimap_other_players_name_size": "Other Players' Name Size",
+	"boathud.tooltip.minimap_other_players_name_size": "Adjust the size of other players' names on the minimap."
 }

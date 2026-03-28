@@ -467,6 +467,37 @@ public class HudRenderer {
 				graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
 					screenX + indicatorSize + 1, screenY + indicatorSize + 1, 0xFF0000FF);
 				
+				// Draw player name if enabled
+				if(Config.minimapShowOtherPlayersNames) {
+					// Get player name
+					String playerName = otherPlayer.getName().getString();
+					
+					// Calculate name position (above the player indicator)
+					int nameX = screenX;
+					int nameY = screenY - indicatorSize - 2;
+					
+					// Set name scale
+					float nameScale = (float)Config.minimapOtherPlayersNameSize;
+					
+					// Save current matrix state
+					graphics.getMatrices().push();
+					
+					// Apply scale
+					graphics.getMatrices().translate(nameX, nameY, 0);
+					graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
+					
+					// Calculate centered text position
+					int textWidth = this.client.textRenderer.getWidth(playerName);
+					int centeredX = -textWidth / 2;
+					int textY = 0;
+					
+					// Draw text with shadow for better visibility
+					graphics.drawTextWithShadow(this.client.textRenderer, playerName, centeredX, textY, 0xFFFFFF);
+					
+					// Restore matrix state
+					graphics.getMatrices().pop();
+				}
+				
 				playersRendered++;
 			}
 		}

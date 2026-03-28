@@ -67,6 +67,10 @@ public class Config {
 	public static double minimapPlayerIndicatorSize = 3.0d;
 	/** Size of other players' indicators on the minimap. */
 	public static double minimapOtherPlayersIndicatorSize = 2.0d;
+	/** Whether to show other players' names on the minimap. */
+	public static boolean minimapShowOtherPlayersNames = false;
+	/** Size of other players' names on the minimap. */
+	public static double minimapOtherPlayersNameSize = 0.5d;
 
 	private Config() {}
 
@@ -133,11 +137,17 @@ public class Config {
 		minimapZoom = Double.parseDouble(val);
 	}
 	if(prop.get("minimapPlayerIndicatorSize") instanceof String val) {
-		minimapPlayerIndicatorSize = Double.parseDouble(val);
-	}
-	if(prop.get("minimapOtherPlayersIndicatorSize") instanceof String val) {
-		minimapOtherPlayersIndicatorSize = Double.parseDouble(val);
-	}
+			minimapPlayerIndicatorSize = Double.parseDouble(val);
+		}
+		if(prop.get("minimapOtherPlayersIndicatorSize") instanceof String val) {
+			minimapOtherPlayersIndicatorSize = Double.parseDouble(val);
+		}
+		if(prop.get("minimapShowOtherPlayersNames") instanceof String val) {
+			minimapShowOtherPlayersNames = Boolean.parseBoolean(val);
+		}
+		if(prop.get("minimapOtherPlayersNameSize") instanceof String val) {
+			minimapOtherPlayersNameSize = Double.parseDouble(val);
+		}
 			// if(prop.get("showSpeedBar") instanceof String val) {
 			// showSpeedBar = Boolean.parseBoolean(val);
 			// }
@@ -176,6 +186,8 @@ public class Config {
 	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
 	writer.write("minimapPlayerIndicatorSize " + Double.toString(minimapPlayerIndicatorSize) + "\n");
 	writer.write("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize) + "\n");
+	writer.write("minimapShowOtherPlayersNames " + Boolean.toString(minimapShowOtherPlayersNames) + "\n");
+	writer.write("minimapOtherPlayersNameSize " + Double.toString(minimapOtherPlayersNameSize) + "\n");
 		// writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 		// writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();

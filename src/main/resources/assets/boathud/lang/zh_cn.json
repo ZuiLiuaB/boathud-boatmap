@@ -46,5 +46,9 @@
 	"boathud.option.minimap_player_indicator_size": "玩家标识大小",
 	"boathud.tooltip.minimap_player_indicator_size": "调整小地图上玩家自身标识的大小。",
 	"boathud.option.minimap_other_players_indicator_size": "其他玩家标识大小",
-	"boathud.tooltip.minimap_other_players_indicator_size": "调整小地图上其他玩家标识的大小。"
+	"boathud.tooltip.minimap_other_players_indicator_size": "调整小地图上其他玩家标识的大小。",
+	"boathud.option.minimap_show_other_players_names": "显示其他玩家名字",
+	"boathud.tooltip.minimap_show_other_players_names": "启用后将在小地图上显示其他玩家的名字。",
+	"boathud.option.minimap_other_players_name_size": "其他玩家名字大小",
+	"boathud.tooltip.minimap_other_players_name_size": "调整小地图上其他玩家名字的大小。"
 }
