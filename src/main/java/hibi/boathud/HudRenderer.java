@@ -11,6 +11,10 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockState;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.DyedColorComponent;
 import org.joml.Quaternionf;
 import java.util.HashMap;
 import java.util.Map;
@@ -253,12 +257,12 @@ public class HudRenderer {
 			centerX + indicatorSize + borderSize, centerY + borderSize, // Bottom right
 			0xFF000000); // Black border
 		
-		// Draw red filled triangle
+		// Draw filled triangle with color based on leather armor
 		drawTriangle(graphics, 
 			centerX, centerY - triangleHeight, // Top point
 			centerX - indicatorSize, centerY, // Bottom left
 			centerX + indicatorSize, centerY, // Bottom right
-			0xFFFF0000); // Red color
+			getLocalPlayerIndicatorColor()); // Color based on leather armor
 
 		// Draw direction indicator (north arrow)
 		graphics.getMatrices().push();
@@ -286,28 +290,32 @@ public class HudRenderer {
 	private void preRenderMinimap(Vec3d playerPos) {
 		if(this.client.world == null) return;
 		
-		// Release old pre-rendered array to free memory before creating new one
-		if(preRenderedMinimap != null) {
-			// Set to null to allow garbage collection
-			preRenderedMinimap = null;
+		// Calculate needed array size
+		int arraySize = Config.minimapSize * Config.minimapSize;
+		
+		// Reuse existing array if size matches, otherwise create new one
+		if(preRenderedMinimap == null || preRenderedMinimap.length != arraySize) {
+			preRenderedMinimap = new int[arraySize];
 		}
 		
-		// Create new pre-rendered array with current size
-		preRenderedMinimap = new int[Config.minimapSize * Config.minimapSize];
 		int centerX = Config.minimapSize / 2;
 		int centerZ = Config.minimapSize / 2;
 		int playerY = (int)playerPos.y;
+		
+		// Precompute common values
+		int halfSize = Config.minimapSize / 2;
+		
+		// Use mutable block pos to reduce object creation
+		BlockPos.Mutable mutablePos = new BlockPos.Mutable();
+		BlockPos.Mutable abovePos = new BlockPos.Mutable();
 		
 		// Render ice blocks to array with performance optimizations
 		// Ensure we render the entire rectangular area without circular mask
 		for(int x = 0; x < Config.minimapSize; x++) {
 			for(int z = 0; z < Config.minimapSize; z++) {
 				// Calculate world coordinates with zoom
-				// More intuitive zoom calculation: zoom = 1.0 shows normal area, higher values show larger area
-				// Scale the offset by zoom factor to control the area shown
-				double offsetX = (x - centerX) * Config.minimapZoom;
-				double offsetZ = (z - centerZ) * Config.minimapZoom;
-				// Use precise floating-point player position for smooth movement
+				double offsetX = (x - halfSize) * Config.minimapZoom;
+				double offsetZ = (z - halfSize) * Config.minimapZoom;
 				int worldX = (int)(playerPos.x + offsetX);
 				int worldZ = (int)(playerPos.z + offsetZ);
 				
@@ -315,42 +323,45 @@ public class HudRenderer {
 				boolean foundIce = false;
 				
 				// Check current Y level first (most common case)
-				BlockPos currentPos = new BlockPos(worldX, playerY + Config.minimapYOffset, worldZ);
-				BlockState currentState = this.client.world.getBlockState(currentPos);
+				mutablePos.set(worldX, playerY + Config.minimapYOffset, worldZ);
+				BlockState currentState = this.client.world.getBlockState(mutablePos);
 				Block currentBlock = currentState.getBlock();
 				
 				// Check if it's an ice block and has transparent block above
-				if(isIceBlock(currentBlock) && hasTransparentAbove(currentPos.up())) {
+				abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+				if(isIceBlock(currentBlock) && hasTransparentAbove(abovePos)) {
 					bestColor = calculateIceColor(0, playerY);
 					foundIce = true;
-				}
-				
-				// If not found, check below player level
-				if(!foundIce) {
-					for(int yOffset = -1; yOffset >= -Config.minimapIceDetectionRange; yOffset--) {
-						BlockPos blockPos = new BlockPos(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-						BlockState blockState = this.client.world.getBlockState(blockPos);
+				} else {
+					// If not found, check below player level
+					int maxBelow = Math.max(-Config.minimapIceDetectionRange, -10); // Limit vertical check range
+					for(int yOffset = -1; yOffset >= maxBelow; yOffset--) {
+						mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+						BlockState blockState = this.client.world.getBlockState(mutablePos);
 						Block block = blockState.getBlock();
 						
-						if(isIceBlock(block) && hasTransparentAbove(blockPos.up())) {
+						abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+						if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
 							bestColor = calculateIceColor(yOffset, playerY);
 							foundIce = true;
 							break; // Found ice, no need to check further
 						}
 					}
-				}
-				
-				// If still not found, check above player level if enabled
-				if(!foundIce && Config.minimapShowAllHeights) {
-					for(int yOffset = 1; yOffset <= Config.minimapIceDetectionRange; yOffset++) {
-						BlockPos blockPos = new BlockPos(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-						BlockState blockState = this.client.world.getBlockState(blockPos);
-						Block block = blockState.getBlock();
-						
-						if(isIceBlock(block) && hasTransparentAbove(blockPos.up())) {
-							bestColor = calculateIceColor(yOffset, playerY);
-							foundIce = true;
-							break; // Found ice, no need to check further
+					
+					// If still not found, check above player level if enabled (limit range)
+					if(!foundIce && Config.minimapShowAllHeights) {
+						int maxAbove = Math.min(Config.minimapIceDetectionRange, 10); // Limit vertical check range
+						for(int yOffset = 1; yOffset <= maxAbove; yOffset++) {
+							mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+							BlockState blockState = this.client.world.getBlockState(mutablePos);
+							Block block = blockState.getBlock();
+							
+							abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+							if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
+								bestColor = calculateIceColor(yOffset, playerY);
+								foundIce = true;
+								break; // Found ice, no need to check further
+							}
 						}
 					}
 				}
@@ -359,13 +370,82 @@ public class HudRenderer {
 				preRenderedMinimap[x + z * Config.minimapSize] = bestColor;
 			}
 		}
-		
-
 	}
 	
 	/** Check if the block is an ice block we want to render */
 	private boolean isIceBlock(Block block) {
 		return block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE;
+	}
+	
+	/** Determine the indicator color based on player's leather armor color */
+	private int getPlayerIndicatorColor(net.minecraft.entity.player.PlayerEntity player) {
+		// Default color for other players: blue
+		int defaultColor = 0xFF0000FF;
+		
+		// Check if player is wearing leather armor
+		for (net.minecraft.item.ItemStack armorItem : player.getArmorItems()) {
+			if (armorItem.getItem() instanceof ArmorItem) {
+				// Get color from leather armor using DataComponentTypes
+				var dyeColor = armorItem.get(DataComponentTypes.DYED_COLOR);
+				if (dyeColor != null) {
+					// Get the RGB color value from DyedColorComponent
+					int color = dyeColor.rgb();
+					
+					// Convert RGB color to ARGB with full alpha
+					int alpha = 0xFF;
+					int red = (color >> 16) & 0xFF;
+					int green = (color >> 8) & 0xFF;
+					int blue = color & 0xFF;
+					
+					// Check if color is red or blue
+					if (red > 150 && green < 100 && blue < 100) {
+						// Red armor: use red color
+						return (alpha << 24) | (0xFF << 16) | (0x00 << 8) | 0x00; // Red
+					} else if (red < 100 && green < 100 && blue > 150) {
+						// Blue armor: use blue color
+						return (alpha << 24) | (0x00 << 16) | (0x00 << 8) | 0xFF; // Blue
+					}
+				}
+			}
+		}
+		
+		// Default color if no red/blue leather armor
+		return defaultColor;
+	}
+	
+	/** Get the indicator color for the local player */
+	private int getLocalPlayerIndicatorColor() {
+		if (this.client.player == null) return 0xFFFF0000; // Default red for local player
+		
+		// Check if local player is wearing leather armor
+		for (net.minecraft.item.ItemStack armorItem : this.client.player.getArmorItems()) {
+			if (armorItem.getItem() instanceof ArmorItem) {
+				// Get color from leather armor using DataComponentTypes
+				var dyeColor = armorItem.get(DataComponentTypes.DYED_COLOR);
+				if (dyeColor != null) {
+					// Get the RGB color value from DyedColorComponent
+					int color = dyeColor.rgb();
+					
+					// Convert RGB color to ARGB with full alpha
+					int alpha = 0xFF;
+					int red = (color >> 16) & 0xFF;
+					int green = (color >> 8) & 0xFF;
+					int blue = color & 0xFF;
+					
+					// Check if color is red or blue
+					if (red > 150 && green < 100 && blue < 100) {
+						// Red armor: use red color
+						return (alpha << 24) | (0xFF << 16) | (0x00 << 8) | 0x00; // Red
+					} else if (red < 100 && green < 100 && blue > 150) {
+						// Blue armor: use blue color
+						return (alpha << 24) | (0x00 << 16) | (0x00 << 8) | 0xFF; // Blue
+					}
+				}
+			}
+		}
+		
+		// Default red color if no red/blue leather armor
+		return 0xFFFF0000;
 	}
 	
 	/** Check if the block above is transparent */
@@ -463,9 +543,10 @@ public class HudRenderer {
 				graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
 					screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, 0xFF000000);
 				
-				// Draw blue filled square
+				// Draw filled square with color based on leather armor
+				int playerColor = getPlayerIndicatorColor(otherPlayer);
 				graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
-					screenX + indicatorSize + 1, screenY + indicatorSize + 1, 0xFF0000FF);
+					screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
 				
 				// Draw player name if enabled
 				if(Config.minimapShowOtherPlayersNames) {
@@ -594,13 +675,29 @@ public class HudRenderer {
 	
 	/** Draw a filled circle */
 	private void drawCircleFill(DrawContext graphics, int centerX, int centerY, int radius, int color) {
-		// Simple implementation using rectangle fills
-		// This will draw a solid circle without horizontal lines
-		for (int y = -radius; y <= radius; y++) {
-			for (int x = -radius; x <= radius; x++) {
-				if (x * x + y * y <= radius * radius) {
-					graphics.fill(centerX + x, centerY + y, centerX + x + 1, centerY + y + 1, color);
-				}
+		// Optimized implementation using Bresenham's circle algorithm with horizontal line fills
+		int x = radius;
+		int y = 0;
+		int radiusError = 1 - x;
+
+		while (x >= y) {
+			// Draw horizontal lines for the current y level in all quadrants
+			// Top half
+			graphics.fill(centerX - x, centerY + y, centerX + x + 1, centerY + y + 1, color);
+			graphics.fill(centerX - x, centerY - y, centerX + x + 1, centerY - y + 1, color);
+			
+			// Bottom half (excluding the center line to avoid duplication)
+			if (y != 0) {
+				graphics.fill(centerX - y, centerY + x, centerX + y + 1, centerY + x + 1, color);
+				graphics.fill(centerX - y, centerY - x, centerX + y + 1, centerY - x + 1, color);
+			}
+
+			y++;
+			if (radiusError < 0) {
+				radiusError += 2 * y + 1;
+			} else {
+				x--;
+				radiusError += 2 * (y - x + 1);
 			}
 		}
 	}
