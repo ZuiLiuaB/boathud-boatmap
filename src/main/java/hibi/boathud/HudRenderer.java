@@ -675,30 +675,13 @@ public class HudRenderer {
 	
 	/** Draw a filled circle */
 	private void drawCircleFill(DrawContext graphics, int centerX, int centerY, int radius, int color) {
-		// Optimized implementation using Bresenham's circle algorithm with horizontal line fills
-		int x = radius;
-		int y = 0;
-		int radiusError = 1 - x;
-
-		while (x >= y) {
-			// Draw horizontal lines for the current y level in all quadrants
-			// Top half
-			graphics.fill(centerX - x, centerY + y, centerX + x + 1, centerY + y + 1, color);
-			graphics.fill(centerX - x, centerY - y, centerX + x + 1, centerY - y + 1, color);
-			
-			// Bottom half (excluding the center line to avoid duplication)
-			if (y != 0) {
-				graphics.fill(centerX - y, centerY + x, centerX + y + 1, centerY + x + 1, color);
-				graphics.fill(centerX - y, centerY - x, centerX + y + 1, centerY - x + 1, color);
-			}
-
-			y++;
-			if (radiusError < 0) {
-				radiusError += 2 * y + 1;
-			} else {
-				x--;
-				radiusError += 2 * (y - x + 1);
-			}
+		// Simple but reliable implementation using rectangle fills
+		// Only draw pixels within the circle radius
+		for (int y = -radius; y <= radius; y++) {
+			// Precompute the horizontal range for this y level
+			int xRange = (int) Math.sqrt(radius * radius - y * y);
+			// Draw a horizontal line across the circle at this y level
+			graphics.fill(centerX - xRange, centerY + y, centerX + xRange + 1, centerY + y + 1, color);
 		}
 	}
 
