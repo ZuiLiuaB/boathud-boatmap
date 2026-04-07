@@ -501,6 +501,10 @@ public class HudRenderer {
 	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, Vec3d playerPos, double scale, float currentYaw) {
 		if(this.client.world == null) return;
 		
+		// Calculate minimap radius
+		int renderedSize = (int)(Config.minimapSize * scale);
+		int radius = renderedSize / 2;
+		
 		// Get all players in the world (limit to improve performance)
 		int maxPlayersToRender = 16;
 		int playersRendered = 0;
@@ -534,6 +538,20 @@ public class HudRenderer {
 				// Apply zoom factor to relative coordinates to match minimap zoom level
 				int screenX = centerX + (int)(rotatedX * scale / Config.minimapZoom);
 				int screenY = centerY + (int)(rotatedZ * scale / Config.minimapZoom);
+				
+				// Limit player indicator within minimap bounds if enabled
+				if(Config.minimapLimitPlayersToBounds) {
+					// Calculate distance from center
+					double distance = Math.sqrt(Math.pow(screenX - centerX, 2) + Math.pow(screenY - centerY, 2));
+					// If outside radius, limit to the edge
+					if(distance > radius) {
+						// Calculate angle to center
+						double angle = Math.atan2(screenY - centerY, screenX - centerX);
+						// Calculate new position on the edge of the circle
+						screenX = centerX + (int)(Math.cos(angle) * radius);
+						screenY = centerY + (int)(Math.sin(angle) * radius);
+					}
+				}
 				
 				// Draw blue small square for other player with customizable size
 				int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size

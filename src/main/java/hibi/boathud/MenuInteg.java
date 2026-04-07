@@ -149,6 +149,12 @@ public class MenuInteg implements ModMenuApi {
 				.setMax(2.0d)
 				.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE)
 				.setSaveConsumer(newVal -> Config.minimapOtherPlayersNameSize = newVal)
+				.build())
+			
+			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LIMIT_PLAYERS_TO_BOUNDS, Config.minimapLimitPlayersToBounds)
+				.setDefaultValue(true)
+				.setTooltip(TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS)
+				.setSaveConsumer(newVal -> Config.minimapLimitPlayersToBounds = newVal)
 				.build());
 
 				// .addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
@@ -201,9 +207,11 @@ public class MenuInteg implements ModMenuApi {
 	MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.option.minimap_other_players_indicator_size"),
 	TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_indicator_size"),
 	MINIMAP_SHOW_OTHER_PLAYERS_NAMES = Text.translatable("boathud.option.minimap_show_other_players_names"),
-	TIP_MINIMAP_SHOW_OTHER_PLAYERS_NAMES = Text.translatable("boathud.tooltip.minimap_show_other_players_names"),
-	MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.option.minimap_other_players_name_size"),
-	TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_name_size"),
+TIP_MINIMAP_SHOW_OTHER_PLAYERS_NAMES = Text.translatable("boathud.tooltip.minimap_show_other_players_names"),
+MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.option.minimap_other_players_name_size"),
+TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_name_size"),
+MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.option.minimap_limit_players_to_bounds"),
+TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.tooltip.minimap_limit_players_to_bounds"),
 	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),

@@ -71,6 +71,8 @@ public class Config {
 	public static boolean minimapShowOtherPlayersNames = false;
 	/** Size of other players' names on the minimap. */
 	public static double minimapOtherPlayersNameSize = 0.5d;
+	/** Whether to limit other players' indicators within the minimap boundaries. */
+	public static boolean minimapLimitPlayersToBounds = true;
 
 	private Config() {}
 
@@ -146,8 +148,11 @@ public class Config {
 			minimapShowOtherPlayersNames = Boolean.parseBoolean(val);
 		}
 		if(prop.get("minimapOtherPlayersNameSize") instanceof String val) {
-			minimapOtherPlayersNameSize = Double.parseDouble(val);
-		}
+				minimapOtherPlayersNameSize = Double.parseDouble(val);
+			}
+			if(prop.get("minimapLimitPlayersToBounds") instanceof String val) {
+				minimapLimitPlayersToBounds = Boolean.parseBoolean(val);
+			}
 			// if(prop.get("showSpeedBar") instanceof String val) {
 			// showSpeedBar = Boolean.parseBoolean(val);
 			// }
@@ -188,6 +193,7 @@ public class Config {
 	writer.write("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize) + "\n");
 	writer.write("minimapShowOtherPlayersNames " + Boolean.toString(minimapShowOtherPlayersNames) + "\n");
 	writer.write("minimapOtherPlayersNameSize " + Double.toString(minimapOtherPlayersNameSize) + "\n");
+	writer.write("minimapLimitPlayersToBounds " + Boolean.toString(minimapLimitPlayersToBounds) + "\n");
 		// writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
 		// writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
 			writer.close();

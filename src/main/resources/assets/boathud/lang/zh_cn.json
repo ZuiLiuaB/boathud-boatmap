@@ -50,5 +50,7 @@
 	"boathud.option.minimap_show_other_players_names": "显示其他玩家名字",
 	"boathud.tooltip.minimap_show_other_players_names": "启用后将在小地图上显示其他玩家的名字。",
 	"boathud.option.minimap_other_players_name_size": "其他玩家名字大小",
-	"boathud.tooltip.minimap_other_players_name_size": "调整小地图上其他玩家名字的大小。"
+	"boathud.tooltip.minimap_other_players_name_size": "调整小地图上其他玩家名字的大小。",
+	"boathud.option.minimap_limit_players_to_bounds": "限制玩家在边界内",
+	"boathud.tooltip.minimap_limit_players_to_bounds": "启用后，其他玩家的标识将被限制在小地图边界内显示。"
 }
