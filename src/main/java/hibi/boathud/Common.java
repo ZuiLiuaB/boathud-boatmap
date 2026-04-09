@@ -1,17 +1,11 @@
 package hibi.boathud;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.vehicle.AbstractBoatEntity;
-import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.client.gui.screen.Screen;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 
 /**
  * Main mod class that manages the initialization, ticking, and cleanup of the BoatHud mod.
@@ -39,27 +33,6 @@ public class Common implements ClientModInitializer {
 		
 		// Register client stop event for cleanup
 		ClientLifecycleEvents.CLIENT_STOPPING.register(this::onClientStopping);
-		
-		// Register command for opening settings
-		ClientCommandRegistrationCallback.EVENT.register(this::registerCommands);
-	}
-	
-	/**
-	 * Registers client commands for the mod.
-	 */
-	private void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
-		// Register /boathudmap command to open settings
-		dispatcher.register(ClientCommandManager.literal("boathudmap")
-			.executes(context -> {
-				// Open the config screen on the main thread
-				MinecraftClient client = MinecraftClient.getInstance();
-				client.execute(() -> {
-					Screen configScreen = new MenuInteg().getModConfigScreenFactory().create(client.currentScreen);
-					client.setScreen(configScreen);
-				});
-				return 1;
-			})
-		);
 	}
 	
 	/**
