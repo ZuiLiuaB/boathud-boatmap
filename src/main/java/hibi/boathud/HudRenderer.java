@@ -248,21 +248,36 @@ public class HudRenderer {
 		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale); // Use customizable size
 		int triangleHeight = (int)(indicatorSize * 2.0); // Taller, more pointed triangle
 		
+		// Apply rotation to player indicator based on player's actual direction only when locked to north
+		graphics.getMatrices().push();
+		graphics.getMatrices().translate(centerX, centerY, 0);
+		
+		// Only rotate player indicator when minimap is locked to north
+		if(Config.minimapLockNorth) {
+			// Calculate player's actual direction (inverted to fix rotation direction)
+			float playerRotation = (float)Math.toRadians(playerYaw + 180);
+			Quaternionf playerQuaternion = new Quaternionf().rotateZ(playerRotation);
+			graphics.getMatrices().multiply(playerQuaternion);
+		}
+		
 		// Draw black border triangle (slightly larger)
 		int borderSize = 1;
 		// Custom triangle drawing since fillTriangle is not available
 		drawTriangle(graphics, 
-			centerX, centerY - triangleHeight - borderSize, // Top point
-			centerX - indicatorSize - borderSize, centerY + borderSize, // Bottom left
-			centerX + indicatorSize + borderSize, centerY + borderSize, // Bottom right
+			0, -triangleHeight - borderSize, // Top point
+			-indicatorSize - borderSize, borderSize, // Bottom left
+			indicatorSize + borderSize, borderSize, // Bottom right
 			0xFF000000); // Black border
 		
 		// Draw filled triangle with color based on leather armor
 		drawTriangle(graphics, 
-			centerX, centerY - triangleHeight, // Top point
-			centerX - indicatorSize, centerY, // Bottom left
-			centerX + indicatorSize, centerY, // Bottom right
+			0, -triangleHeight, // Top point
+			-indicatorSize, 0, // Bottom left
+			indicatorSize, 0, // Bottom right
 			getLocalPlayerIndicatorColor()); // Color based on leather armor
+		
+		// Reset rotation
+		graphics.getMatrices().pop();
 
 		// Draw direction indicator (north arrow)
 		graphics.getMatrices().push();
