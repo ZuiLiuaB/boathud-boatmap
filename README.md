@@ -54,6 +54,7 @@ To configure, you need [Mod Menu](https://github.com/TerraformersMC/ModMenu/).
 - Fixed the rotation direction of the player's triangle indicator
 - When the minimap is locked to north, the player's triangle indicator will rotate with the player's actual direction
 - When the minimap is not locked to north, the player's triangle indicator remains fixed
+- Added red and blue team display feature (detects if players are wearing red or blue leather chestplates)
 
   <br />
 
