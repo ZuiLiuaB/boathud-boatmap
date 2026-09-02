@@ -4,6 +4,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -31,6 +33,11 @@ public class HudRenderer {
 	// Make this non-static to avoid memory leaks when the HUD renderer is recreated
 	private class MinimapCache {
 		float smoothYaw = 0f; // Only keep smooth rotation value, no other unnecessary state
+		// Pre-rendered minimap held as a GPU texture so it can be drawn in a single call
+		NativeImageBackedTexture minimapTexture = null;
+		Identifier minimapTextureId = null;
+		int minimapTextureSize = 0;
+		long lastPreRenderTime = -1; // Game time of the last world scan, used to throttle recompute
 	}
 	private MinimapCache minimapCache = new MinimapCache();
 	
@@ -182,67 +189,12 @@ public class HudRenderer {
 			minimapCache.smoothYaw = 0.0f; // Reset smooth yaw to north
 		}
 
-		// Draw ice blocks with rotation applied, only within circular area
-		if(preRenderedMinimap != null) {
-			// First draw black borders for ice edges
-			for(int x = 0; x < Config.minimapSize; x++) {
-				for(int z = 0; z < Config.minimapSize; z++) {
-					int color = preRenderedMinimap[x + z * Config.minimapSize];
-					if((color >>> 24) == 0) continue; // Skip transparent pixels
-					
-					// Check if this is an edge pixel by looking at adjacent pixels
-					boolean isEdge = false;
-					for(int dx = -1; dx <= 1; dx++) {
-						for(int dz = -1; dz <= 1; dz++) {
-							if(dx == 0 && dz == 0) continue; // Skip current pixel
-							int nx = x + dx;
-							int nz = z + dz;
-							if(nx >= 0 && nx < Config.minimapSize && nz >= 0 && nz < Config.minimapSize) {
-								int neighborColor = preRenderedMinimap[nx + nz * Config.minimapSize];
-								if((neighborColor >>> 24) == 0) {
-									isEdge = true;
-									break;
-								}
-							} else {
-								// Edge of the map is considered an edge
-								isEdge = true;
-								break;
-							}
-						}
-						if(isEdge) break;
-					}
-					
-					if(isEdge) {
-				// Calculate relative position for border pixel
-				double relX = (x - (double) Config.minimapSize / 2 + 0.5) * scale;
-				double relZ = (z - (double) Config.minimapSize / 2 + 0.5) * scale;
-				
-				// Check if pixel is within circle radius
-				if(relX * relX + relZ * relZ <= radius * radius) {
-					// Draw black border pixel
-					graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, 0xFF000000);
-				}
-			}
-		}
-	}
-	
-	// Then draw the regular ice blocks on top
-	for(int x = 0; x < Config.minimapSize; x++) {
-		for(int z = 0; z < Config.minimapSize; z++) {
-			int color = preRenderedMinimap[x + z * Config.minimapSize];
-			if((color >>> 24) == 0) continue; // Skip transparent pixels
-
-			// Calculate relative position
-			double relX = (x - (double) Config.minimapSize / 2 + 0.5) * scale;
-			double relZ = (z - (double) Config.minimapSize / 2 + 0.5) * scale;
-
-					// Check if pixel is within circle radius
-					if(relX * relX + relZ * relZ <= radius * radius) {
-						// Draw the pixel with rotation applied
-						graphics.fill((int)relX, (int)relZ, (int)relX + 1, (int)relZ + 1, color);
-					}
-				}
-			}
+		// Draw the pre-rendered minimap texture in a single call.
+		// The texture already contains circle masking and ice edge borders from preRenderMinimap,
+		// and the current matrix applies the rotation + centering, so one blit replaces thousands of fills.
+		if(minimapCache.minimapTexture != null) {
+			graphics.drawTexture(RenderLayer::getGuiTextured, minimapCache.minimapTextureId,
+				-renderedHalfSize, -renderedHalfSize, 0, 0, renderedSize, renderedSize, Config.minimapSize, Config.minimapSize);
 		}
 
 		// Pop the matrix stack to reset rotation for player indicator
@@ -309,10 +261,16 @@ public class HudRenderer {
 	/** Pre-renders the minimap to an integer array with performance optimizations */
 	private void preRenderMinimap(Vec3d playerPos) {
 		if(this.client.world == null) return;
-		
-		// Calculate needed array size
+
+		// Throttle the expensive world scan to once per game tick. Render runs every frame,
+		// but the player position does not change within a tick, so re-scanning every frame is wasted work.
 		int arraySize = Config.minimapSize * Config.minimapSize;
-		
+		long now = this.client.world.getTime();
+		if(now == minimapCache.lastPreRenderTime && preRenderedMinimap != null && preRenderedMinimap.length == arraySize) {
+			return; // Same tick as last scan, reuse the cached texture
+		}
+		minimapCache.lastPreRenderTime = now;
+
 		// Reuse existing array if size matches, otherwise create new one
 		if(preRenderedMinimap == null || preRenderedMinimap.length != arraySize) {
 			preRenderedMinimap = new int[arraySize];
@@ -386,9 +344,63 @@ public class HudRenderer {
 					}
 				}
 				
-				// Store the color for this position (will be transparent if no ice found)
-				preRenderedMinimap[x + z * Config.minimapSize] = bestColor;
+			// Store the color for this position (will be transparent if no ice found)
+			preRenderedMinimap[x + z * Config.minimapSize] = bestColor;
+		}
+		}
+
+		// Blit the pre-rendered array into a DynamicTexture so the minimap can be drawn
+		// in a single draw call instead of thousands of per-pixel fills.
+		ensureMinimapTexture();
+		NativeImage img = minimapCache.minimapTexture.getImage();
+		int size = Config.minimapSize;
+		int half = size / 2;
+		int r2 = half * half;
+		for(int x = 0; x < size; x++) {
+			for(int z = 0; z < size; z++) {
+				int idx = x + z * size;
+				double relX = x - (double)size / 2 + 0.5;
+				double relZ = z - (double)size / 2 + 0.5;
+				if(relX * relX + relZ * relZ > r2) {
+					img.setColorArgb(x, z, 0); // Outside circle -> transparent
+					continue;
+				}
+				int color = preRenderedMinimap[idx];
+				if((color >>> 24) == 0) {
+					img.setColorArgb(x, z, 0); // No ice -> transparent
+					continue;
+				}
+				// Edge detection: draw a black border where an ice pixel borders empty space
+				boolean isEdge = false;
+				for(int dx = -1; dx <= 1 && !isEdge; dx++) {
+					for(int dz = -1; dz <= 1; dz++) {
+						if(dx == 0 && dz == 0) continue;
+						int nx = x + dx, nz = z + dz;
+						if(nx < 0 || nx >= size || nz < 0 || nz >= size) { isEdge = true; break; }
+						if((preRenderedMinimap[nx + nz * size] >>> 24) == 0) { isEdge = true; break; }
+					}
+				}
+				img.setColorArgb(x, z, isEdge ? 0xFF000000 : color);
 			}
+		}
+		minimapCache.minimapTexture.upload();
+	}
+
+	/** Lazily (re)create the minimap DynamicTexture to match the configured size. */
+	private void ensureMinimapTexture() {
+		int size = Config.minimapSize;
+		if(minimapCache.minimapTexture == null || minimapCache.minimapTextureSize != size) {
+			if(minimapCache.minimapTexture != null) {
+				this.client.getTextureManager().destroyTexture(minimapCache.minimapTextureId);
+				minimapCache.minimapTexture.close();
+			}
+			NativeImage img = new NativeImage(size, size, false);
+			minimapCache.minimapTexture = new NativeImageBackedTexture(img);
+			// registerTexture(Identifier, Texture) is stable across versions; registerDynamicTexture's
+			// (String, NativeImageBackedTexture) overload does not exist at runtime in 1.21.4 and crashes.
+			minimapCache.minimapTextureId = Identifier.of("boathud", "minimap");
+			this.client.getTextureManager().registerTexture(minimapCache.minimapTextureId, minimapCache.minimapTexture);
+			minimapCache.minimapTextureSize = size;
 		}
 	}
 	
