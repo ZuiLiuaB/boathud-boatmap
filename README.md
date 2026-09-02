@@ -8,6 +8,8 @@ A simple in-game map mod for Minecraft, focused on navigation and ice detection 
 
 - In-game HUD map display
 - Ice block detection (packed ice, blue ice)
+- Red and blue team display (detects if players are wearing red or blue leather chestplates)
+- Speed comparison display (shows green border for faster players, yellow border for slower players)
 - Configurable via Mod Menu and Cloth Config
 - Supports multiple languages
 
@@ -28,6 +30,7 @@ To configure, you need [Mod Menu](https://github.com/TerraformersMC/ModMenu/).
 - 游戏内 HUD 地图显示
 - 冰块检测（压实冰、蓝冰）
 - 红蓝车队显示（检测玩家是否穿着红色、蓝色皮革胸甲）
+- 速度比较显示（其他玩家速度比你快时显示绿色边框，比你慢时显示橙色边框）
 - 支持通过 Mod Menu 和 Cloth Config 配置
 - 支持多语言
 
@@ -41,6 +44,10 @@ To configure, you need [Mod Menu](https://github.com/TerraformersMC/ModMenu/).
 - 修复了玩家三角形指示器旋转方向的问题
 - 当小地图锁定北方时，玩家的三角形指示器会跟随转动
 - 当小地图不锁定北方时，玩家的三角形指示器保持固定方向
+- 移除了/boathudmap命令功能
+- 添加了红蓝车队显示功能（检测玩家是否穿着红色、蓝色皮革胸甲）
+- 添加了速度比较显示功能（其他玩家速度比你快时显示绿色边框，比你慢时显示黄色边框）
+- 添加了速度比较功能的开关选项
 
   <br />
 
@@ -54,7 +61,9 @@ To configure, you need [Mod Menu](https://github.com/TerraformersMC/ModMenu/).
 - Fixed the rotation direction of the player's triangle indicator
 - When the minimap is locked to north, the player's triangle indicator will rotate with the player's actual direction
 - When the minimap is not locked to north, the player's triangle indicator remains fixed
+- Removed the /boathudmap command functionality
 - Added red and blue team display feature (detects if players are wearing red or blue leather chestplates)
+- Added speed comparison display feature (shows green border for faster players, orange border for slower players)
+- Added a toggle for speed comparison feature
 
   <br />
-

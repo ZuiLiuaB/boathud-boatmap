@@ -152,10 +152,16 @@ public class MenuInteg implements ModMenuApi {
 				.build())
 			
 			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LIMIT_PLAYERS_TO_BOUNDS, Config.minimapLimitPlayersToBounds)
-				.setDefaultValue(true)
-				.setTooltip(TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS)
-				.setSaveConsumer(newVal -> Config.minimapLimitPlayersToBounds = newVal)
-				.build());
+					.setDefaultValue(true)
+					.setTooltip(TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS)
+					.setSaveConsumer(newVal -> Config.minimapLimitPlayersToBounds = newVal)
+					.build())
+
+				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_SPEED_COMPARISON, Config.minimapShowSpeedComparison)
+					.setDefaultValue(true)
+					.setTooltip(TIP_MINIMAP_SHOW_SPEED_COMPARISON)
+					.setSaveConsumer(newVal -> Config.minimapShowSpeedComparison = newVal)
+					.build());
 
 				// .addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
 				// 	.setDefaultValue(true)
@@ -212,6 +218,8 @@ MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.option.minimap_othe
 TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_name_size"),
 MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.option.minimap_limit_players_to_bounds"),
 TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.tooltip.minimap_limit_players_to_bounds"),
+MINIMAP_SHOW_SPEED_COMPARISON = Text.translatable("boathud.option.minimap_show_speed_comparison"),
+TIP_MINIMAP_SHOW_SPEED_COMPARISON = Text.translatable("boathud.tooltip.minimap_show_speed_comparison"),
 	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),

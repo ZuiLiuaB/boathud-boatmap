@@ -568,18 +568,40 @@ public class HudRenderer {
 					}
 				}
 				
-				// Draw blue small square for other player with customizable size
-				int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
-				int borderSize = 1;
+				// Draw small square for other player with customizable size
+			int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
+			int borderSize = 1;
+			
+			// Get speed comparison color if enabled
+			int borderColor = 0xFF000000; // Default black border
+			if(Config.minimapShowSpeedComparison && this.client.player != null) {
+				// Get local player speed
+				Vec3d localVelocity = this.client.player.getVelocity();
+				double localSpeed = Math.sqrt(localVelocity.x * localVelocity.x + localVelocity.z * localVelocity.z);
 				
-				// Draw black border square (slightly larger)
-				graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
-					screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, 0xFF000000);
+				// Get other player speed
+				Vec3d otherVelocity = otherPlayer.getVelocity();
+				double otherSpeed = Math.sqrt(otherVelocity.x * otherVelocity.x + otherVelocity.z * otherVelocity.z);
 				
-				// Draw filled square with color based on leather armor
-				int playerColor = getPlayerIndicatorColor(otherPlayer);
-				graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
-					screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
+				// Compare speeds and set border color
+				if(otherSpeed > localSpeed) {
+					// Other player is faster: green border
+					borderColor = 0xFF00FF00;
+				} else if(otherSpeed < localSpeed) {
+						// Other player is slower: orange border (more prominent than yellow)
+						borderColor = 0xFFFF8000;
+					}
+				// If speeds are equal, keep black border
+			}
+			
+			// Draw border square (slightly larger)
+			graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
+				screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, borderColor);
+			
+			// Draw filled square with color based on leather armor
+			int playerColor = getPlayerIndicatorColor(otherPlayer);
+			graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
+				screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
 				
 				// Draw player name if enabled
 				if(Config.minimapShowOtherPlayersNames) {

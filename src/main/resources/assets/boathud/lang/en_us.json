@@ -52,5 +52,7 @@
 	"boathud.option.minimap_other_players_name_size": "Other Players' Name Size",
 	"boathud.tooltip.minimap_other_players_name_size": "Adjust the size of other players' names on the minimap.",
 	"boathud.option.minimap_limit_players_to_bounds": "Limit Players to Bounds",
-	"boathud.tooltip.minimap_limit_players_to_bounds": "When enabled, other players' indicators are limited to stay within the minimap boundaries."
+	"boathud.tooltip.minimap_limit_players_to_bounds": "When enabled, other players' indicators are limited to stay within the minimap boundaries.",
+	"boathud.option.minimap_show_speed_comparison": "Show Speed Comparison",
+	"boathud.tooltip.minimap_show_speed_comparison": "When enabled, other players' indicators show different colored borders based on their speed."
 }
