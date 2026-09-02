@@ -155,16 +155,21 @@ public class HudRenderer {
 			float targetYaw = playerYaw + 180.0f; // Add 180 degrees to get correct forward direction
 			float smoothFactor = 0.1f; // Adjust for smoother rotation
 			
-			// Calculate shortest rotation path
+			// Calculate shortest rotation path (mod-normalize to [-180, 180] so it always takes the short way)
 			float yawDiff = targetYaw - minimapCache.smoothYaw;
-			if(yawDiff > 180.0f) {
+			while(yawDiff > 180.0f) {
 				yawDiff -= 360.0f;
-			} else if(yawDiff < -180.0f) {
+			}
+			while(yawDiff < -180.0f) {
 				yawDiff += 360.0f;
 			}
-			
+
 			// Apply lerp to get smooth yaw
 			minimapCache.smoothYaw += yawDiff * smoothFactor;
+
+			// Keep smoothYaw normalized to [0, 360) so it never accumulates across full turns.
+			// Rotation is periodic, so this does not cause any visual jump.
+			minimapCache.smoothYaw = (minimapCache.smoothYaw % 360.0f + 360.0f) % 360.0f;
 			
 			// Rotate map to match player's view direction with smooth rotation
 			// Minecraft yaw increases clockwise, OpenGL rotation is counter-clockwise, so invert
