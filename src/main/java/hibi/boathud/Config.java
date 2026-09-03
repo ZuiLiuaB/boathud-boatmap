@@ -49,6 +49,8 @@ public class Config {
 	public static boolean minimapShowAllHeights = false;
 	/** Whether the minimap should lock to north or follow player rotation. */
 	public static boolean minimapLockNorth = true;
+	/** Minimap panel shape. 0 = circle, 1 = square. Any other value is reset to circle on load. */
+	public static int minimapShape = 0;
 	// /** Whether the minimap should be square. */
 	// public static boolean minimapSquare = false;
 	// /** Whether to show the speed bar. */
@@ -125,6 +127,9 @@ public class Config {
 	if(prop.get("minimapLockNorth") instanceof String val) {
 		minimapLockNorth = Boolean.parseBoolean(val);
 	}
+	if(prop.get("minimapShape") instanceof String val) {
+		minimapShape = Integer.parseInt(val);
+	}
 	if(prop.get("minimapIceDetectionRange") instanceof String val) {
 		minimapIceDetectionRange = Integer.parseInt(val);
 	}
@@ -169,6 +174,9 @@ public class Config {
 		if(barType > 2 || barType < 0) {
 			barType = 0;
 		}
+		if(minimapShape < 0 || minimapShape > 1) {
+			minimapShape = 0;
+		}
 	}
 
 	/**
@@ -189,6 +197,7 @@ public class Config {
 	writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
 		writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
 		writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
+		writer.write("minimapShape " + Integer.toString(minimapShape) + "\n");
 		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
 		writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");

@@ -34,6 +34,21 @@
 - 👤 Other players' name display toggle and size adjustment
 - 🌈 冰道显示选项（显示所有高度或仅显示玩家所在高度及以下）
 - 🌈 Ice path display options (show all heights or only player's height and below)
+- 🔲 小地图形状切换（圆形 / 方形）
+- 🔲 Minimap shape switch (circle / square)
+
+### 小地图形状
+### Minimap Shape
+- 🔲 新增「小地图形状」选项，可在圆形与方形之间自由切换
+- 🔲 Added a "Minimap Shape" option to freely switch between circle and square
+- 🛡️ 方形采用「圆形扫描 + 矩形遮罩」架构：扫描区域始终是圆盘，方形视口是它的内接正方形，因此任意旋转角下都不会出现空白角落，内容也不会戳出边框
+- 🛡️ Square mode uses a "circular scan + rectangular mask" architecture: the scanned region is always a disc and the square viewport is its inscribed square, so at any rotation angle there are no blank corners and nothing ever pokes out of the frame
+- 🔁 两种形状的缩放手感一致，1 屏幕像素始终对应相同的世界格数
+- 🔁 Both shapes share the same zoom feel: one screen pixel always corresponds to the same number of world blocks
+- 🧭 其他玩家标识的边界钳制按形状分别处理（方形沿边滑动，圆形贴圆周）
+- 🧭 Other players' indicator clamping is handled per shape (slides along the edge on square, hugs the rim on circle)
+- 🚫 已移除伪 3D 形状，配置界面中不再出现
+- 🚫 The pseudo-3D shape has been removed and no longer appears in the config screen
 
 ## 优化改进
 ## Optimizations and Improvements
@@ -119,8 +134,10 @@
 ## 已知问题
 ## Known Issues
 
-- ⚠️ 暂无已知严重问题
-- ⚠️ No known serious issues
+- ⚠️ 方形模式的扫描面积约为圆形模式的 2 倍；小地图大小设到 512 时可能出现掉帧，建议 256 及以下
+- ⚠️ Square mode scans about twice the area of circle mode; setting the minimap size to 512 may cause frame drops, 256 or below is recommended
+- ⚠️ 其余暂无已知严重问题
+- ⚠️ No other known serious issues
 - 📝 如有问题，请在GitHub Issues中报告
 - 📝 If you encounter any issues, please report them on GitHub Issues
 

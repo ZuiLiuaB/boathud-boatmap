@@ -117,7 +117,15 @@ public class HudRenderer {
 		}
 	}
 
-	/** Renders the minimap showing ice blocks with optimized caching and proper rotation */
+	/**
+	* Renders the minimap.
+	*
+	* The scan always produces a circular disc whose radius reaches the corners of the square panel
+	* (see getMinimapTextureSize). A disc is rotation invariant, so the square viewport - which is
+	* exactly its inscribed square - still has real data behind every pixel at any rotation. That is
+	* what kills both classic square-minimap bugs: nothing ever pokes out of the frame, and no corner
+	* ever goes blank when the map turns.
+	*/
 	public void renderMinimap(DrawContext graphics) {
 		if(this.client.world == null) return;
 
@@ -132,118 +140,81 @@ public class HudRenderer {
 		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
 		preRenderMinimap(playerPos);
 
-		// Calculate minimap position
+		double scale = 1.0d; // Fixed scale, no longer configurable
+		int viewSize = (int)(Config.minimapSize * scale);
+		int half = viewSize / 2;
 		int posX = Config.minimapX;
 		int posY = Config.minimapY;
-		double scale = 1.0d; // Fixed scale, no longer configurable
+		int centerX = posX + half;
+		int centerY = posY + half;
+		boolean square = Config.minimapShape == 1;
 
-		// Calculate actual rendered size
-		int renderedSize = (int)(Config.minimapSize * scale);
-		int renderedHalfSize = renderedSize / 2;
+		// Advance the smoothed rotation before anything reads it
+		this.updateSmoothYaw(playerYaw);
 
-		// Calculate center position
-		int centerX = posX + renderedHalfSize;
-		int centerY = posY + renderedHalfSize;
-
-		// Draw circular minimap background
-		int radius = renderedSize / 2;
-		// Use custom circle drawing since fillEllipse is not available
-		drawCircleFill(graphics, centerX, centerY, radius, 0x40000000);
-
-		// Apply rotation using matrix stack
-		graphics.getMatrices().push();
-		graphics.getMatrices().translate(centerX, centerY, 0);
-
-		// Apply rotation only if not locked to north
-		if(!Config.minimapLockNorth) {
-			// Calculate target rotation angle to match player's forward direction
-			// When player looks forward, map should show forward direction correctly
-			// Fixing direction by adjusting rotation calculation
-			float targetYaw = playerYaw + 180.0f; // Add 180 degrees to get correct forward direction
-			float smoothFactor = 0.1f; // Adjust for smoother rotation
-			
-			// Calculate shortest rotation path (mod-normalize to [-180, 180] so it always takes the short way)
-			float yawDiff = targetYaw - minimapCache.smoothYaw;
-			while(yawDiff > 180.0f) {
-				yawDiff -= 360.0f;
-			}
-			while(yawDiff < -180.0f) {
-				yawDiff += 360.0f;
-			}
-
-			// Apply lerp to get smooth yaw
-			minimapCache.smoothYaw += yawDiff * smoothFactor;
-
-			// Keep smoothYaw normalized to [0, 360) so it never accumulates across full turns.
-			// Rotation is periodic, so this does not cause any visual jump.
-			minimapCache.smoothYaw = (minimapCache.smoothYaw % 360.0f + 360.0f) % 360.0f;
-			
-			// Rotate map to match player's view direction with smooth rotation
-			// Minecraft yaw increases clockwise, OpenGL rotation is counter-clockwise, so invert
-			float rotation = (float)Math.toRadians(-minimapCache.smoothYaw);
-			// Use Quaternionf for rotation in Minecraft 1.21.3
-			Quaternionf quaternion = new Quaternionf().rotateZ(rotation);
-			graphics.getMatrices().multiply(quaternion);
+		// Panel background
+		if(square) {
+			graphics.fill(posX, posY, posX + viewSize, posY + viewSize, 0x40000000);
 		} else {
-			// Locked to north, so no rotation needed
-			minimapCache.smoothYaw = 0.0f; // Reset smooth yaw to north
+			drawCircleFill(graphics, centerX, centerY, half, 0x40000000);
 		}
 
-		// Draw the pre-rendered minimap texture in a single call.
-		// The texture already contains circle masking and ice edge borders from preRenderMinimap,
-		// and the current matrix applies the rotation + centering, so one blit replaces thousands of fills.
+		// The map itself, in a single blit of the pre-rendered disc.
 		if(minimapCache.minimapTexture != null) {
+			int textureSize = minimapCache.minimapTextureSize;
+			int texHalf = textureSize / 2;
+			// Scissor lives in screen space, so it MUST be enabled before push/translate/rotate,
+			// otherwise the clip rectangle gets rotated along with the map and clipping is wrong.
+			if(square) graphics.enableScissor(posX, posY, posX + viewSize, posY + viewSize);
+			graphics.getMatrices().push();
+			graphics.getMatrices().translate(centerX, centerY, 0);
+			if(!Config.minimapLockNorth) {
+				// Minecraft yaw increases clockwise, OpenGL rotation is counter-clockwise, so invert
+				float rotation = (float)Math.toRadians(-minimapCache.smoothYaw);
+				graphics.getMatrices().multiply(new Quaternionf().rotateZ(rotation));
+			}
 			graphics.drawTexture(RenderLayer::getGuiTextured, minimapCache.minimapTextureId,
-				-renderedHalfSize, -renderedHalfSize, 0, 0, renderedSize, renderedSize, Config.minimapSize, Config.minimapSize);
+				-texHalf, -texHalf, 0, 0, textureSize, textureSize, textureSize, textureSize);
+			graphics.getMatrices().pop();
+			if(square) graphics.disableScissor();
 		}
 
-		// Pop the matrix stack to reset rotation for player indicator
-		graphics.getMatrices().pop();
-
-		// Draw player indicator at center - upward pointing triangle with customizable size
-		// Make triangle taller and more pointed (height multiplier increased from 1.5 to 2.0)
-		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale); // Use customizable size
+		// Player indicator at the centre - upward pointing triangle with customizable size
+		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale);
 		int triangleHeight = (int)(indicatorSize * 2.0); // Taller, more pointed triangle
-		
-		// Apply rotation to player indicator based on player's actual direction only when locked to north
+
 		graphics.getMatrices().push();
 		graphics.getMatrices().translate(centerX, centerY, 0);
-		
-		// Only rotate player indicator when minimap is locked to north
+
+		// Only rotate the player indicator when the map itself is locked to north
 		if(Config.minimapLockNorth) {
 			// Calculate player's actual direction (inverted to fix rotation direction)
 			float playerRotation = (float)Math.toRadians(playerYaw + 180);
-			Quaternionf playerQuaternion = new Quaternionf().rotateZ(playerRotation);
-			graphics.getMatrices().multiply(playerQuaternion);
+			graphics.getMatrices().multiply(new Quaternionf().rotateZ(playerRotation));
 		}
-		
+
 		// Draw black border triangle (slightly larger)
 		int borderSize = 1;
-		// Custom triangle drawing since fillTriangle is not available
-		drawTriangle(graphics, 
+		drawTriangle(graphics,
 			0, -triangleHeight - borderSize, // Top point
 			-indicatorSize - borderSize, borderSize, // Bottom left
 			indicatorSize + borderSize, borderSize, // Bottom right
 			0xFF000000); // Black border
-		
+
 		// Draw filled triangle with color based on leather armor
-		drawTriangle(graphics, 
+		drawTriangle(graphics,
 			0, -triangleHeight, // Top point
 			-indicatorSize, 0, // Bottom left
 			indicatorSize, 0, // Bottom right
-			getLocalPlayerIndicatorColor()); // Color based on leather armor
-		
-		// Reset rotation
+			getLocalPlayerIndicatorColor());
+
 		graphics.getMatrices().pop();
 
-		// Draw direction indicator (north arrow)
+		// Direction indicator (north arrow) - always points north, so rotate opposite to the map
 		graphics.getMatrices().push();
-		graphics.getMatrices().translate(centerX, centerY - radius + 10, 0);
-		// Direction indicator should always point north, so rotate opposite to map rotation
+		graphics.getMatrices().translate(centerX, centerY - half + 10, 0);
 		float arrowRotation = (float)Math.toRadians(-minimapCache.smoothYaw);
-		Quaternionf arrowQuaternion = new Quaternionf().rotateZ(arrowRotation);
-		graphics.getMatrices().multiply(arrowQuaternion);
-		// Draw north arrow
+		graphics.getMatrices().multiply(new Quaternionf().rotateZ(arrowRotation));
 		graphics.fill(-2, -8, 2, 0, 0xFFFFFF);
 		graphics.fill(-3, 0, 3, 2, 0xFFFFFF);
 		graphics.getMatrices().pop();
@@ -253,18 +224,57 @@ public class HudRenderer {
 			drawOtherPlayers(graphics, centerX, centerY, playerPos, scale, minimapCache.smoothYaw);
 		}
 
-		// Draw circular minimap border - black outer stroke
+		// Panel border
 		int borderThickness = 1;
-		drawCircle(graphics, centerX, centerY, radius + borderThickness, 0xFF000000);
+		if(square) {
+			int x0 = posX - borderThickness;
+			int y0 = posY - borderThickness;
+			int x1 = posX + viewSize + borderThickness;
+			int y1 = posY + viewSize + borderThickness;
+			graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
+			graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
+			graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
+			graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
+		} else {
+			drawCircle(graphics, centerX, centerY, half + borderThickness, 0xFF000000);
+		}
+	}
+
+	/** Advances the smoothed minimap rotation towards the player facing, always taking the short way round. */
+	private void updateSmoothYaw(float playerYaw) {
+		if(Config.minimapLockNorth) {
+			minimapCache.smoothYaw = 0.0f; // Locked to north, so no rotation
+			return;
+		}
+		float targetYaw = playerYaw + 180.0f; // Add 180 degrees to get correct forward direction
+		float yawDiff = targetYaw - minimapCache.smoothYaw;
+		while(yawDiff > 180.0f) {
+			yawDiff -= 360.0f;
+		}
+		while(yawDiff < -180.0f) {
+			yawDiff += 360.0f;
+		}
+		minimapCache.smoothYaw += yawDiff * 0.1f; // Smoothing factor, applied per frame
+		// Keep normalized to [0, 360) so it never accumulates across full turns.
+		// Rotation is periodic, so this does not cause any visual jump.
+		minimapCache.smoothYaw = (minimapCache.smoothYaw % 360.0f + 360.0f) % 360.0f;
 	}
 	
-	/** Pre-renders the minimap to an integer array with performance optimizations */
+	/**
+	* Pre-renders the minimap into an int array and uploads it to the GPU texture.
+	*
+	* The scan always covers a circular area centred on the player. Square mode scans out to half
+	* the viewport diagonal, so rotating the map can never leave the square corners empty - that
+	* is exactly why the old build showed blank corners once the map turned by 45 degrees.
+	*/
 	private void preRenderMinimap(Vec3d playerPos) {
 		if(this.client.world == null) return;
 
+		int textureSize = getMinimapTextureSize();
+
 		// Throttle the expensive world scan to once per game tick. Render runs every frame,
 		// but the player position does not change within a tick, so re-scanning every frame is wasted work.
-		int arraySize = Config.minimapSize * Config.minimapSize;
+		int arraySize = textureSize * textureSize;
 		long now = this.client.world.getTime();
 		if(now == minimapCache.lastPreRenderTime && preRenderedMinimap != null && preRenderedMinimap.length == arraySize) {
 			return; // Same tick as last scan, reuse the cached texture
@@ -275,97 +285,51 @@ public class HudRenderer {
 		if(preRenderedMinimap == null || preRenderedMinimap.length != arraySize) {
 			preRenderedMinimap = new int[arraySize];
 		}
-		
-		int centerX = Config.minimapSize / 2;
-		int centerZ = Config.minimapSize / 2;
+
 		int playerY = (int)playerPos.y;
-		
+
 		// Precompute common values
-		int halfSize = Config.minimapSize / 2;
-		
+		double halfTex = textureSize / 2.0d;
+		double r2 = halfTex * halfTex;
+		double zoom = Config.minimapZoom;
+
 		// Use mutable block pos to reduce object creation
 		BlockPos.Mutable mutablePos = new BlockPos.Mutable();
 		BlockPos.Mutable abovePos = new BlockPos.Mutable();
-		
-		// Render ice blocks to array with performance optimizations
-		// Ensure we render the entire rectangular area without circular mask
-		for(int x = 0; x < Config.minimapSize; x++) {
-			for(int z = 0; z < Config.minimapSize; z++) {
-				// Calculate world coordinates with zoom
-				double offsetX = (x - halfSize) * Config.minimapZoom;
-				double offsetZ = (z - halfSize) * Config.minimapZoom;
-				int worldX = (int)(playerPos.x + offsetX);
-				int worldZ = (int)(playerPos.z + offsetZ);
-				
-				int bestColor = 0;
-				boolean foundIce = false;
-				
-				// Check current Y level first (most common case)
-				mutablePos.set(worldX, playerY + Config.minimapYOffset, worldZ);
-				BlockState currentState = this.client.world.getBlockState(mutablePos);
-				Block currentBlock = currentState.getBlock();
-				
-				// Check if it's an ice block and has transparent block above
-				abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
-				if(isIceBlock(currentBlock) && hasTransparentAbove(abovePos)) {
-					bestColor = calculateIceColor(0, playerY);
-					foundIce = true;
-				} else {
-					// If not found, check below player level
-					int maxBelow = Math.max(-Config.minimapIceDetectionRange, -10); // Limit vertical check range
-					for(int yOffset = -1; yOffset >= maxBelow; yOffset--) {
-						mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-						BlockState blockState = this.client.world.getBlockState(mutablePos);
-						Block block = blockState.getBlock();
-						
-						abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
-						if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
-							bestColor = calculateIceColor(yOffset, playerY);
-							foundIce = true;
-							break; // Found ice, no need to check further
-						}
-					}
-					
-					// If still not found, check above player level if enabled (limit range)
-					if(!foundIce && Config.minimapShowAllHeights) {
-						int maxAbove = Math.min(Config.minimapIceDetectionRange, 10); // Limit vertical check range
-						for(int yOffset = 1; yOffset <= maxAbove; yOffset++) {
-							mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
-							BlockState blockState = this.client.world.getBlockState(mutablePos);
-							Block block = blockState.getBlock();
-							
-							abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
-							if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
-								bestColor = calculateIceColor(yOffset, playerY);
-								foundIce = true;
-								break; // Found ice, no need to check further
-							}
-						}
-					}
+
+		// Scan a circular area: rotation invariant, so every rotation angle stays fully covered.
+		for(int x = 0; x < textureSize; x++) {
+			for(int z = 0; z < textureSize; z++) {
+				double offsetX = x - halfTex + 0.5;
+				double offsetZ = z - halfTex + 0.5;
+				if(offsetX * offsetX + offsetZ * offsetZ > r2) {
+					preRenderedMinimap[x + z * textureSize] = 0; // outside the scan circle
+					continue;
 				}
-				
-			// Store the color for this position (will be transparent if no ice found)
-			preRenderedMinimap[x + z * Config.minimapSize] = bestColor;
-		}
+				int worldX = (int)(playerPos.x + offsetX * zoom);
+				int worldZ = (int)(playerPos.z + offsetZ * zoom);
+				preRenderedMinimap[x + z * textureSize] = scanIceAt(worldX, worldZ, playerY, mutablePos, abovePos);
+			}
 		}
 
 		// Blit the pre-rendered array into a DynamicTexture so the minimap can be drawn
 		// in a single draw call instead of thousands of per-pixel fills.
-		ensureMinimapTexture();
+		ensureMinimapTexture(textureSize);
 		NativeImage img = minimapCache.minimapTexture.getImage();
-		int size = Config.minimapSize;
-		int half = size / 2;
-		int r2 = half * half;
-		for(int x = 0; x < size; x++) {
-			for(int z = 0; z < size; z++) {
-				int idx = x + z * size;
-				double relX = x - (double)size / 2 + 0.5;
-				double relZ = z - (double)size / 2 + 0.5;
-				if(relX * relX + relZ * relZ > r2) {
+		int viewSize = Config.minimapSize;
+		double halfView = viewSize / 2.0d;
+		double r2View = halfView * halfView;
+		for(int x = 0; x < textureSize; x++) {
+			for(int z = 0; z < textureSize; z++) {
+				double relX = x - halfTex + 0.5;
+				double relZ = z - halfTex + 0.5;
+				// Circle mode masks down to the inscribed circle so it renders round. Square mode
+				// keeps the full texture and lets the scissor in renderMinimap clip it to the panel.
+				if(Config.minimapShape != 1 && relX * relX + relZ * relZ > r2View) {
 					img.setColorArgb(x, z, 0); // Outside circle -> transparent
 					continue;
 				}
-				int color = preRenderedMinimap[idx];
+				int color = preRenderedMinimap[x + z * textureSize];
 				if((color >>> 24) == 0) {
 					img.setColorArgb(x, z, 0); // No ice -> transparent
 					continue;
@@ -376,8 +340,8 @@ public class HudRenderer {
 					for(int dz = -1; dz <= 1; dz++) {
 						if(dx == 0 && dz == 0) continue;
 						int nx = x + dx, nz = z + dz;
-						if(nx < 0 || nx >= size || nz < 0 || nz >= size) { isEdge = true; break; }
-						if((preRenderedMinimap[nx + nz * size] >>> 24) == 0) { isEdge = true; break; }
+						if(nx < 0 || nx >= textureSize || nz < 0 || nz >= textureSize) { isEdge = true; break; }
+						if((preRenderedMinimap[nx + nz * textureSize] >>> 24) == 0) { isEdge = true; break; }
 					}
 				}
 				img.setColorArgb(x, z, isEdge ? 0xFF000000 : color);
@@ -386,22 +350,79 @@ public class HudRenderer {
 		minimapCache.minimapTexture.upload();
 	}
 
-	/** Lazily (re)create the minimap DynamicTexture to match the configured size. */
-	private void ensureMinimapTexture() {
-		int size = Config.minimapSize;
-		if(minimapCache.minimapTexture == null || minimapCache.minimapTextureSize != size) {
+	/** Scans a single world column for a visible ice block and returns its minimap colour. */
+	private int scanIceAt(int worldX, int worldZ, int playerY, BlockPos.Mutable mutablePos, BlockPos.Mutable abovePos) {
+		// Check current Y level first (most common case)
+		mutablePos.set(worldX, playerY + Config.minimapYOffset, worldZ);
+		BlockState currentState = this.client.world.getBlockState(mutablePos);
+		Block currentBlock = currentState.getBlock();
+
+		abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+		if(isIceBlock(currentBlock) && hasTransparentAbove(abovePos)) {
+			return calculateIceColor(0, playerY);
+		}
+
+		// If not found, check below player level (limit vertical check range)
+		int maxBelow = Math.max(-Config.minimapIceDetectionRange, -10);
+		for(int yOffset = -1; yOffset >= maxBelow; yOffset--) {
+			mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+			BlockState blockState = this.client.world.getBlockState(mutablePos);
+			Block block = blockState.getBlock();
+
+			abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+			if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
+				return calculateIceColor(yOffset, playerY);
+			}
+		}
+
+		// If still not found, check above player level if enabled
+		if(Config.minimapShowAllHeights) {
+			int maxAbove = Math.min(Config.minimapIceDetectionRange, 10);
+			for(int yOffset = 1; yOffset <= maxAbove; yOffset++) {
+				mutablePos.set(worldX, playerY + Config.minimapYOffset + yOffset, worldZ);
+				BlockState blockState = this.client.world.getBlockState(mutablePos);
+				Block block = blockState.getBlock();
+
+				abovePos.set(mutablePos.getX(), mutablePos.getY() + 1, mutablePos.getZ());
+				if(isIceBlock(block) && hasTransparentAbove(abovePos)) {
+					return calculateIceColor(yOffset, playerY);
+				}
+			}
+		}
+		return 0; // No ice -> transparent
+	}
+
+	/** Lazily (re)create the minimap DynamicTexture to match the requested texture size. */
+	private void ensureMinimapTexture(int textureSize) {
+		if(minimapCache.minimapTexture == null || minimapCache.minimapTextureSize != textureSize) {
 			if(minimapCache.minimapTexture != null) {
 				this.client.getTextureManager().destroyTexture(minimapCache.minimapTextureId);
 				minimapCache.minimapTexture.close();
 			}
-			NativeImage img = new NativeImage(size, size, false);
+			NativeImage img = new NativeImage(textureSize, textureSize, false);
 			minimapCache.minimapTexture = new NativeImageBackedTexture(img);
 			// registerTexture(Identifier, Texture) is stable across versions; registerDynamicTexture's
 			// (String, NativeImageBackedTexture) overload does not exist at runtime in 1.21.4 and crashes.
 			minimapCache.minimapTextureId = Identifier.of("boathud", "minimap");
 			this.client.getTextureManager().registerTexture(minimapCache.minimapTextureId, minimapCache.minimapTexture);
-			minimapCache.minimapTextureSize = size;
+			minimapCache.minimapTextureSize = textureSize;
 		}
+	}
+
+	/**
+	 * Texture size needed for the current shape.
+	 *
+	 * A square viewport that rotates has to be fed from a circular scan whose radius reaches its
+	 * corners, i.e. half the diagonal. Scanning only the inscribed circle is what leaves the four
+	 * corners empty once the map turns by 45 degrees. A circle is rotation invariant, so it only
+	 * ever needs the viewport size.
+	 */
+	private int getMinimapTextureSize() {
+		int viewSize = Config.minimapSize;
+		if(Config.minimapShape != 1) return viewSize;
+		int texSize = (int)(viewSize * Math.sqrt(2.0d)) + 2;
+		if((texSize & 1) == 1) texSize++; // keep it even so the texture centre lands on a pixel centre
+		return Math.max(viewSize, texSize);
 	}
 	
 	/** Check if the block is an ice block we want to render */
@@ -573,15 +594,20 @@ public class HudRenderer {
 				
 				// Limit player indicator within minimap bounds if enabled
 				if(Config.minimapLimitPlayersToBounds) {
-					// Calculate distance from center
-					double distance = Math.sqrt(Math.pow(screenX - centerX, 2) + Math.pow(screenY - centerY, 2));
-					// If outside radius, limit to the edge
-					if(distance > radius) {
-						// Calculate angle to center
-						double angle = Math.atan2(screenY - centerY, screenX - centerX);
-						// Calculate new position on the edge of the circle
-						screenX = centerX + (int)(Math.cos(angle) * radius);
-						screenY = centerY + (int)(Math.sin(angle) * radius);
+					double dx = screenX - centerX;
+					double dy = screenY - centerY;
+					if(Config.minimapShape == 1) {
+						// Square panel: clamp each axis independently so the marker slides along the edge
+						screenX = centerX + (int)Math.round(MathHelper.clamp(dx, -radius, radius));
+						screenY = centerY + (int)Math.round(MathHelper.clamp(dy, -radius, radius));
+					} else {
+						// Circular panel: project onto the rim
+						double distance = Math.sqrt(dx * dx + dy * dy);
+						if(distance > radius) {
+							double angle = Math.atan2(dy, dx);
+							screenX = centerX + (int)(Math.cos(angle) * radius);
+							screenY = centerY + (int)(Math.sin(angle) * radius);
+						}
 					}
 				}
 				
