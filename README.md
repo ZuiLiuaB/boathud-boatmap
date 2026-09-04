@@ -1,8 +1,24 @@
-# BoatHud-map  版本日志
-# BoatHud-map  Release Notes
+# BoatHud-map 1.21.4 版本日志
+# BoatHud-map 1.21.4 Release Notes
 
 ⚠️ **重要警告：不建议与其他小地图模组一起安装，可能会导致游戏崩溃！**
 ⚠️ **Important Warning: Not recommended to install with other minimap mods, may cause game crashes!**
+
+## 2026-09-04 更新
+## September 4, 2026 Update
+
+### 伪 3D 小地图
+### Pseudo-3D Minimap
+- 🗺️ 新增伪 3D 小地图模式，玩家固定在小地图正中心，地图方向跟随玩家视角
+- 🗺️ Added a pseudo-3D minimap mode with the player fixed at the center and the map aligned to the player's view
+- 🧭 修正左右方向，使伪 3D 模式与圆形、方形模式保持一致
+- 🧭 Corrected left-right orientation to match the circle and square minimap modes
+- 📐 赛道采用统一的倾斜平面投影，不产生近大远小、弯曲或扇形拉伸
+- 📐 The track uses a uniform tilted-plane projection without depth scaling, bending, or fan-shaped distortion
+- ↕️ 倾斜角减小时自动扩大地图前后方向的采样与绘制长度，在 0° 至 89° 范围内填满上下边缘
+- ↕️ As the tilt angle decreases, the forward-back scan and draw length expand automatically to fill the top and bottom edges from 0° to 89°
+- 👥 其他玩家标识使用与赛道相同的旋转、缩放和边界投影
+- 👥 Other player markers use the same rotation, scaling, and boundary projection as the track
 
 ## 新增功能
 ## New Features
@@ -30,8 +46,25 @@
 - 🔍 Ice path detection range adjustment
 - 🎯 玩家标识和其他玩家标识大小调整
 - 🎯 Player indicator and other players' indicator size adjustment
+- 👤 其他玩家名字显示开关与大小调整
+- 👤 Other players' name display toggle and size adjustment
 - 🌈 冰道显示选项（显示所有高度或仅显示玩家所在高度及以下）
 - 🌈 Ice path display options (show all heights or only player's height and below)
+- 🔲 小地图形状切换（圆形 / 方形 / 伪 3D）
+- 🔲 Minimap shape switch (circle / square / pseudo-3D)
+
+### 小地图形状
+### Minimap Shape
+- 🔲 新增「小地图形状」选项，可在圆形、方形与伪 3D 之间自由切换
+- 🔲 Added a "Minimap Shape" option to switch between circle, square, and pseudo-3D
+- 🛡️ 方形采用「圆形扫描 + 矩形遮罩」架构：扫描区域始终是圆盘，方形视口是它的内接正方形，因此任意旋转角下都不会出现空白角落，内容也不会戳出边框
+- 🛡️ Square mode uses a "circular scan + rectangular mask" architecture: the scanned region is always a disc and the square viewport is its inscribed square, so at any rotation angle there are no blank corners and nothing ever pokes out of the frame
+- 🔁 两种形状的缩放手感一致，1 屏幕像素始终对应相同的世界格数
+- 🔁 Both shapes share the same zoom feel: one screen pixel always corresponds to the same number of world blocks
+- 🧭 其他玩家标识的边界钳制按形状分别处理（方形沿边滑动，圆形贴圆周）
+- 🧭 Other players' indicator clamping is handled per shape (slides along the edge on square, hugs the rim on circle)
+- 🗺️ 支持伪 3D 形状，并提供可调节的地图倾斜角
+- 🗺️ Added the pseudo-3D shape with an adjustable minimap tilt angle
 
 ## 优化改进
 ## Optimizations and Improvements
@@ -76,6 +109,8 @@
 
 ### 架构改进
 ### Architecture Improvements
+- 🏗️ 参考Xaero Minimap的优秀设计，改进了代码结构
+- 🏗️ Improved code structure by referencing Xaero Minimap's excellent design
 - 💡 实现了单例模式，避免了静态内存泄漏
 - 💡 Implemented singleton pattern, avoiding static memory leaks
 - 🔄 改进了生命周期管理，确保资源正确释放
@@ -115,8 +150,10 @@
 ## 已知问题
 ## Known Issues
 
-- ⚠️ 暂无已知严重问题
-- ⚠️ No known serious issues
+- ⚠️ 方形模式的扫描面积约为圆形模式的 2 倍；小地图大小设到 512 时可能出现掉帧，建议 256 及以下
+- ⚠️ Square mode scans about twice the area of circle mode; setting the minimap size to 512 may cause frame drops, 256 or below is recommended
+- ⚠️ 其余暂无已知严重问题
+- ⚠️ No other known serious issues
 - 📝 如有问题，请在GitHub Issues中报告
 - 📝 If you encounter any issues, please report them on GitHub Issues
 
