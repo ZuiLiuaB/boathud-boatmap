@@ -38,6 +38,11 @@ public class HudRenderer {
 		Identifier minimapTextureId = null;
 		int minimapTextureSize = 0;
 		long lastPreRenderTime = -1; // Game time of the last world scan, used to throttle recompute
+		// Pseudo-3D extra throttling: only re-scan when the player has moved/turned enough.
+		// NaN initial values force the very first frame to scan.
+		double lastScanX = Double.NaN;
+		double lastScanZ = Double.NaN;
+		double lastScanYaw = Double.NaN;
 	}
 	private MinimapCache minimapCache = new MinimapCache();
 	
@@ -136,9 +141,7 @@ public class HudRenderer {
 		// Get player position and rotation
 		Vec3d playerPos = cameraEntity.getPos();
 		float playerYaw = cameraEntity.getYaw();
-
-		// Always pre-render the map every frame to avoid race conditions and array out of bounds errors
-		preRenderMinimap(playerPos);
+		boolean pseudo3D = Config.minimapShape == 2;
 
 		double scale = 1.0d; // Fixed scale, no longer configurable
 		int viewSize = (int)(Config.minimapSize * scale);
@@ -151,6 +154,13 @@ public class HudRenderer {
 
 		// Advance the smoothed rotation before anything reads it
 		this.updateSmoothYaw(playerYaw);
+		preRenderMinimap(playerPos, pseudo3D ? minimapCache.smoothYaw : 0.0f);
+
+		// Pseudo-3D: render the map as a perspective-tilted square inside an upright square frame.
+		if(pseudo3D) {
+			renderMinimapPseudo3D(graphics, playerPos, scale, viewSize, half, posX, posY, centerX, centerY);
+			return;
+		}
 
 		// Panel background
 		if(square) {
@@ -263,88 +273,126 @@ public class HudRenderer {
 	/**
 	* Pre-renders the minimap into an int array and uploads it to the GPU texture.
 	*
-	* The scan always covers a circular area centred on the player. Square mode scans out to half
-	* the viewport diagonal, so rotating the map can never leave the square corners empty - that
-	* is exactly why the old build showed blank corners once the map turned by 45 degrees.
+	* Circle mode scans a circular area. Square and pseudo-3D modes scan a square area whose
+	* half-diagonal equals the viewport radius, so rotating the map can never leave the square
+	* corners empty. Pseudo-3D additionally bakes the player yaw into the texture so the map can
+	* be rendered with a perspective tilt without a second rotation.
 	*/
-	private void preRenderMinimap(Vec3d playerPos) {
+	private void preRenderMinimap(Vec3d playerPos, float playerYaw) {
 		if(this.client.world == null) return;
 
 		int textureSize = getMinimapTextureSize();
+		boolean pseudo3D = Config.minimapShape == 2;
 
-		// Throttle the expensive world scan to once per game tick. Render runs every frame,
-		// but the player position does not change within a tick, so re-scanning every frame is wasted work.
 		int arraySize = textureSize * textureSize;
 		long now = this.client.world.getTime();
-		if(now == minimapCache.lastPreRenderTime && preRenderedMinimap != null && preRenderedMinimap.length == arraySize) {
-			return; // Same tick as last scan, reuse the cached texture
+
+		// Circle/square only throttle by game tick. Pseudo-3D bakes the player yaw into the texture,
+		// so it also throttles by position/yaw changes to avoid a full re-scan every frame.
+		if(!pseudo3D) {
+			if(now == minimapCache.lastPreRenderTime && preRenderedMinimap != null && preRenderedMinimap.length == arraySize) {
+				return;
+			}
+		} else {
+			if(preRenderedMinimap != null && preRenderedMinimap.length == arraySize
+					&& now == minimapCache.lastPreRenderTime
+					&& Math.abs(playerPos.x - minimapCache.lastScanX) < 0.5d
+					&& Math.abs(playerPos.z - minimapCache.lastScanZ) < 0.5d
+					&& Math.abs(MathHelper.wrapDegrees(playerYaw - (float)minimapCache.lastScanYaw)) < 0.5f) {
+				return;
+			}
 		}
 		minimapCache.lastPreRenderTime = now;
+		minimapCache.lastScanX = playerPos.x;
+		minimapCache.lastScanZ = playerPos.z;
+		minimapCache.lastScanYaw = playerYaw;
 
-		// Reuse existing array if size matches, otherwise create new one
 		if(preRenderedMinimap == null || preRenderedMinimap.length != arraySize) {
 			preRenderedMinimap = new int[arraySize];
 		}
 
 		int playerY = (int)playerPos.y;
-
-		// Precompute common values
 		double halfTex = textureSize / 2.0d;
-		double r2 = halfTex * halfTex;
 		double zoom = Config.minimapZoom;
+		// The displayed plane is vertically foreshortened. Scan a wider forward/back range so
+		// that the compressed plane still fills the complete square viewport.
+		double pseudoVerticalScale = pseudo3D
+				? Math.max(0.15d, Math.sin(Math.toRadians(Config.minimapTiltAngle))) : 1.0d;
 
-		// Use mutable block pos to reduce object creation
 		BlockPos.Mutable mutablePos = new BlockPos.Mutable();
 		BlockPos.Mutable abovePos = new BlockPos.Mutable();
 
-		// Scan a circular area: rotation invariant, so every rotation angle stays fully covered.
+		double yawRad = 0.0d, sinYaw = 0.0d, cosYaw = 1.0d;
+		if(pseudo3D) {
+			yawRad = Math.toRadians(playerYaw);
+			sinYaw = Math.sin(yawRad);
+			cosYaw = Math.cos(yawRad);
+		}
+
+		double r2 = halfTex * halfTex;
 		for(int x = 0; x < textureSize; x++) {
 			for(int z = 0; z < textureSize; z++) {
-				double offsetX = x - halfTex + 0.5;
-				double offsetZ = z - halfTex + 0.5;
-				if(offsetX * offsetX + offsetZ * offsetZ > r2) {
-					preRenderedMinimap[x + z * textureSize] = 0; // outside the scan circle
+				double offsetX = x - halfTex + 0.5d;
+				double offsetZ = z - halfTex + 0.5d;
+
+				if(Config.minimapShape == 0 && offsetX * offsetX + offsetZ * offsetZ > r2) {
+					preRenderedMinimap[x + z * textureSize] = 0;
 					continue;
 				}
-				int worldX = (int)(playerPos.x + offsetX * zoom);
-				int worldZ = (int)(playerPos.z + offsetZ * zoom);
+
+				int worldX, worldZ;
+				if(pseudo3D) {
+					// Match the normal map basis: +X is screen-right and +Z is screen-down.
+					// Stretch only the sampled forward/back range; the final plane compresses it back.
+					double planeZ = offsetZ / pseudoVerticalScale;
+					worldX = (int)(playerPos.x + (offsetX * cosYaw - planeZ * sinYaw) * zoom);
+					worldZ = (int)(playerPos.z + (offsetX * sinYaw + planeZ * cosYaw) * zoom);
+				} else {
+					worldX = (int)(playerPos.x + offsetX * zoom);
+					worldZ = (int)(playerPos.z + offsetZ * zoom);
+				}
 				preRenderedMinimap[x + z * textureSize] = scanIceAt(worldX, worldZ, playerY, mutablePos, abovePos);
 			}
 		}
 
-		// Blit the pre-rendered array into a DynamicTexture so the minimap can be drawn
-		// in a single draw call instead of thousands of per-pixel fills.
 		ensureMinimapTexture(textureSize);
 		NativeImage img = minimapCache.minimapTexture.getImage();
 		int viewSize = Config.minimapSize;
 		double halfView = viewSize / 2.0d;
 		double r2View = halfView * halfView;
+
 		for(int x = 0; x < textureSize; x++) {
 			for(int z = 0; z < textureSize; z++) {
-				double relX = x - halfTex + 0.5;
-				double relZ = z - halfTex + 0.5;
-				// Circle mode masks down to the inscribed circle so it renders round. Square mode
-				// keeps the full texture and lets the scissor in renderMinimap clip it to the panel.
-				if(Config.minimapShape != 1 && relX * relX + relZ * relZ > r2View) {
-					img.setColorArgb(x, z, 0); // Outside circle -> transparent
+				double relX = x - halfTex + 0.5d;
+				double relZ = z - halfTex + 0.5d;
+
+				// Only the circle shape masks down to an inscribed circle.
+				if(Config.minimapShape == 0 && relX * relX + relZ * relZ > r2View) {
+					img.setColorArgb(x, z, 0);
 					continue;
 				}
+
 				int color = preRenderedMinimap[x + z * textureSize];
 				if((color >>> 24) == 0) {
-					img.setColorArgb(x, z, 0); // No ice -> transparent
+					img.setColorArgb(x, z, 0);
 					continue;
 				}
-				// Edge detection: draw a black border where an ice pixel borders empty space
-				boolean isEdge = false;
-				for(int dx = -1; dx <= 1 && !isEdge; dx++) {
-					for(int dz = -1; dz <= 1; dz++) {
-						if(dx == 0 && dz == 0) continue;
-						int nx = x + dx, nz = z + dz;
-						if(nx < 0 || nx >= textureSize || nz < 0 || nz >= textureSize) { isEdge = true; break; }
-						if((preRenderedMinimap[nx + nz * textureSize] >>> 24) == 0) { isEdge = true; break; }
+
+				// Edge detection for circle/square only. Perspective strips in pseudo-3D look bad with black edges.
+				if(Config.minimapShape != 2) {
+					boolean isEdge = false;
+					for(int dx = -1; dx <= 1 && !isEdge; dx++) {
+						for(int dz = -1; dz <= 1; dz++) {
+							if(dx == 0 && dz == 0) continue;
+							int nx = x + dx, nz = z + dz;
+							if(nx < 0 || nx >= textureSize || nz < 0 || nz >= textureSize) { isEdge = true; break; }
+							if((preRenderedMinimap[nx + nz * textureSize] >>> 24) == 0) { isEdge = true; break; }
+						}
 					}
+					img.setColorArgb(x, z, isEdge ? 0xFF000000 : color);
+				} else {
+					img.setColorArgb(x, z, color);
 				}
-				img.setColorArgb(x, z, isEdge ? 0xFF000000 : color);
 			}
 		}
 		minimapCache.minimapTexture.upload();
@@ -679,6 +727,151 @@ public class HudRenderer {
 				
 				playersRendered++;
 			}
+		}
+	}
+
+
+	/**
+	 * Renders the pseudo-3D minimap: the panel frame stays a normal square, but the map layer is
+	 * drawn with a perspective tilt (like a 3D navigation app). The player arrow stays fixed at
+	 * the centre and always points up. The yaw is baked into the texture, so no second rotation is
+	 * needed during rendering.
+	 */
+	private void renderMinimapPseudo3D(DrawContext graphics, Vec3d playerPos, double scale, int viewSize, int half, int posX, int posY, int centerX, int centerY) {
+		int textureSize = minimapCache.minimapTextureSize;
+
+		// The panel frame is always a square in screen space - no squash.
+		// It acts as a clipping window, like the window in a 3D navigation app.
+		graphics.enableScissor(posX, posY, posX + viewSize, posY + viewSize);
+
+		// Square background (frame only, no tilt).
+		graphics.fill(posX, posY, posX + viewSize, posY + viewSize, 0x40000000);
+
+		if(minimapCache.minimapTexture != null) {
+			float verticalScale = Math.max(0.15f,
+				MathHelper.sin((float)Math.toRadians(Config.minimapTiltAngle)));
+			int stretchedHeight = (int)Math.ceil(textureSize / verticalScale);
+			int halfTex = textureSize / 2;
+			graphics.getMatrices().push();
+			graphics.getMatrices().translate(centerX, centerY, 0);
+			graphics.getMatrices().scale(1.0f, verticalScale, 1.0f);
+			graphics.drawTexture(RenderLayer::getGuiTextured, minimapCache.minimapTextureId,
+				-halfTex, -stretchedHeight / 2, 0, 0, textureSize, stretchedHeight,
+				textureSize, textureSize, textureSize, textureSize);
+			graphics.getMatrices().pop();
+		}
+
+		// Player indicator at the panel centre, always up, not tilted.
+		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale);
+		int triangleHeight = (int)(indicatorSize * 2.0);
+		drawTriangle(graphics,
+			centerX, centerY - triangleHeight - 1,
+			centerX - indicatorSize - 1, centerY + 1,
+			centerX + indicatorSize + 1, centerY + 1,
+			0xFF000000);
+		drawTriangle(graphics,
+			centerX, centerY - triangleHeight,
+			centerX - indicatorSize, centerY,
+			centerX + indicatorSize, centerY,
+			getLocalPlayerIndicatorColor());
+
+		// Other players projected onto the tilted plane.
+		if(Config.minimapShowOtherPlayers) {
+			drawOtherPlayersPseudo3D(graphics, playerPos, scale, centerX, centerY);
+		}
+
+		graphics.disableScissor();
+
+		// Square border in screen space, unchanged size.
+		int borderThickness = 1;
+		int x0 = posX - borderThickness;
+		int y0 = posY - borderThickness;
+		int x1 = posX + viewSize + borderThickness;
+		int y1 = posY + viewSize + borderThickness;
+		graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
+		graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
+		graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
+		graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
+	}
+
+	/** Draw other players on the perspective-tilted pseudo-3D minimap. */
+	private void drawOtherPlayersPseudo3D(DrawContext graphics, Vec3d playerPos, double scale, int centerX, int centerY) {
+		if(this.client.world == null) return;
+
+		int maxPlayersToRender = 16;
+		int playersRendered = 0;
+		// Pseudo-3D bakes the player yaw INTO the texture with +smoothYaw, so a world-relative
+		// point must be rotated by +smoothYaw (not negated) to land in the baked texture frame.
+		float rotation = (float)Math.toRadians(minimapCache.smoothYaw);
+		float sin = MathHelper.sin(rotation);
+		float cos = MathHelper.cos(rotation);
+		double zoom = Config.minimapZoom;
+		int radius = Config.minimapSize / 2;
+
+		double pseudoVerticalScale = Math.max(0.15d,
+			Math.sin(Math.toRadians(Config.minimapTiltAngle)));
+
+		for(net.minecraft.entity.player.PlayerEntity otherPlayer : this.client.world.getPlayers()) {
+			if(playersRendered >= maxPlayersToRender) break;
+			if(otherPlayer == this.client.player || otherPlayer == this.client.getCameraEntity()) continue;
+			if(!(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity)) continue;
+
+			Vec3d otherPos = otherPlayer.getPos();
+			double relX = otherPos.x - playerPos.x;
+			double relZ = otherPos.z - playerPos.z;
+
+			// Match the normal map basis: +X is screen-right and +Z is screen-down.
+			double rx = relX * cos + relZ * sin;
+			double rz = -relX * sin + relZ * cos;
+
+			// Clamp within the square scan area before projection.
+			if(Config.minimapLimitPlayersToBounds) {
+				double limit = radius * zoom;
+				rx = MathHelper.clamp(rx, -limit, limit);
+				rz = MathHelper.clamp(rz, -limit / pseudoVerticalScale, limit / pseudoVerticalScale);
+			}
+
+			// Convert to texture/screen pixel offsets.
+			double ox = rx / zoom;
+			double oy = rz / zoom;
+
+			// Use the same affine plane projection as the map texture: no depth scaling.
+			int screenX = centerX + (int)Math.round(ox);
+			int screenY = centerY + (int)Math.round(-oy * pseudoVerticalScale);
+
+			int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale);
+			int borderSize = 1;
+			int borderColor = 0xFF000000;
+			if(Config.minimapShowSpeedComparison && this.client.player != null) {
+				Vec3d localVelocity = this.client.player.getVelocity();
+				double localSpeed = Math.sqrt(localVelocity.x * localVelocity.x + localVelocity.z * localVelocity.z);
+				Vec3d otherVelocity = otherPlayer.getVelocity();
+				double otherSpeed = Math.sqrt(otherVelocity.x * otherVelocity.x + otherVelocity.z * otherVelocity.z);
+				if(otherSpeed > localSpeed) {
+					borderColor = 0xFF00FF00;
+				} else if(otherSpeed < localSpeed) {
+					borderColor = 0xFFFF8000;
+				}
+			}
+
+			graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize,
+				screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, borderColor);
+			int playerColor = getPlayerIndicatorColor(otherPlayer);
+			graphics.fill(screenX - indicatorSize, screenY - indicatorSize,
+				screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
+
+			if(Config.minimapShowOtherPlayersNames) {
+				String playerName = otherPlayer.getName().getString();
+				float nameScale = (float)Config.minimapOtherPlayersNameSize;
+				graphics.getMatrices().push();
+				graphics.getMatrices().translate(screenX, screenY - indicatorSize - 2, 0);
+				graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
+				int textWidth = this.client.textRenderer.getWidth(playerName);
+				graphics.drawTextWithShadow(this.client.textRenderer, playerName, -textWidth / 2, 0, 0xFFFFFF);
+				graphics.getMatrices().pop();
+			}
+
+			playersRendered++;
 		}
 	}
 

@@ -85,11 +85,19 @@ public class MenuInteg implements ModMenuApi {
 				.setSaveConsumer(newVal -> Config.minimapLockNorth = newVal)
 				.build())
 
-		.addEntry(entryBuilder.startEnumSelector(MINIMAP_SHAPE, MinimapShape.class, MinimapShape.values()[Config.minimapShape])
+			.addEntry(entryBuilder.startEnumSelector(MINIMAP_SHAPE, MinimapShape.class, MinimapShape.values()[Config.minimapShape])
 				.setDefaultValue(MinimapShape.CIRCLE)
 				.setTooltip(TIP_MINIMAP_SHAPE)
 				.setSaveConsumer(newVal -> Config.minimapShape = newVal.ordinal())
 				.setEnumNameProvider(value -> Text.translatable("boathud.option.minimap_shape." + value.toString()))
+				.build())
+
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_TILT_ANGLE, Config.minimapTiltAngle)
+				.setDefaultValue(35.0d)
+				.setMin(0.0d)
+				.setMax(90.0d)
+				.setTooltip(TIP_MINIMAP_TILT_ANGLE)
+				.setSaveConsumer(newVal -> Config.minimapTiltAngle = newVal)
 				.build())
 
 			.addEntry(entryBuilder.startIntField(MINIMAP_ICE_DETECTION_RANGE, Config.minimapIceDetectionRange)
@@ -184,7 +192,7 @@ public class MenuInteg implements ModMenuApi {
 		PACKED, MIXED, BLUE
 	}
 	public enum MinimapShape {
-		CIRCLE, SQUARE
+		CIRCLE, SQUARE, PSEUDO3D
 	}
 		public enum SpeedFormat {
 		MS, KMPH, MPH, KT
@@ -209,6 +217,8 @@ public class MenuInteg implements ModMenuApi {
 		TIP_MINIMAP_LOCK_NORTH = Text.translatable("boathud.tooltip.minimap_lock_north"),
 		MINIMAP_SHAPE = Text.translatable("boathud.option.minimap_shape"),
 		TIP_MINIMAP_SHAPE = Text.translatable("boathud.tooltip.minimap_shape"),
+		MINIMAP_TILT_ANGLE = Text.translatable("boathud.option.minimap_tilt_angle"),
+		TIP_MINIMAP_TILT_ANGLE = Text.translatable("boathud.tooltip.minimap_tilt_angle"),
 	
 	MINIMAP_ICE_DETECTION_RANGE = Text.translatable("boathud.option.minimap_ice_detection_range"),
 	TIP_MINIMAP_ICE_DETECTION_RANGE = Text.translatable("boathud.tooltip.minimap_ice_detection_range"),

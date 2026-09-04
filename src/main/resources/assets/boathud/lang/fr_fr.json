@@ -27,9 +27,10 @@
   "boathud.option.minimap_lock_north": "Verrouiller vers le nord",
   "boathud.tooltip.minimap_lock_north": "Lorsqu'activé, la mini-carte montre toujours le nord. Lorsqu'elle est désactivée, elle tourne avec la vue du joueur.",
   "boathud.option.minimap_shape": "Forme de la mini-carte",
-  "boathud.tooltip.minimap_shape": "Choisissez la forme du panneau de la mini-carte. Les deux formes tournent avec la vue lorsque le verrouillage nord est désactivé ; le carré n'affiche jamais de coins vides.",
+  "boathud.tooltip.minimap_shape": "Choisissez la forme du panneau de la mini-carte. Cercle et carré tournent avec la vue lorsque le verrouillage nord est désactivé ; le carré n'affiche jamais de coins vides. Pseudo-3D incline toute la carte comme un plan rigide (sans perspective).",
   "boathud.option.minimap_shape.CIRCLE": "Cercle",
   "boathud.option.minimap_shape.SQUARE": "Carré",
+  "boathud.option.minimap_shape.PSEUDO3D": "Pseudo-3D",
   "boathud.option.minimap_player_shape": "Forme de l'indicateur de joueur",
   "boathud.option.minimap_player_shape.SQUARE": "Carré",
   "boathud.option.minimap_player_shape.CIRCLE": "Cercle",
@@ -45,5 +46,7 @@
   "boathud.option.minimap_size": "Taille de la mini-carte",
   "boathud.tooltip.minimap_size": "Ajustez la résolution de la mini-carte. Des valeurs plus élevées offrent plus de détails mais utilisent plus de ressources.",
   "boathud.option.minimap_zoom": "Zoom de la mini-carte",
-  "boathud.tooltip.minimap_zoom": "Ajustez la zone du monde affichée sur la mini-carte. Des valeurs plus élevées montrent plus de zone, des valeurs plus basses montrent plus de détails."
+  "boathud.tooltip.minimap_zoom": "Ajustez la zone du monde affichée sur la mini-carte. Des valeurs plus élevées montrent plus de zone, des valeurs plus basses montrent plus de détails.",
+  "boathud.option.minimap_tilt_angle": "Angle d'inclinaison Pseudo-3D",
+  "boathud.tooltip.minimap_tilt_angle": "Inclinaison de la mini-carte pseudo-3D. 90 = à plat (aucune inclinaison), 0 = vue de côté. Utilisé uniquement lorsque la forme est Pseudo-3D."
 }

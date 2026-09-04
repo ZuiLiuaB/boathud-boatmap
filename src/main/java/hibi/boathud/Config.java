@@ -49,8 +49,10 @@ public class Config {
 	public static boolean minimapShowAllHeights = false;
 	/** Whether the minimap should lock to north or follow player rotation. */
 	public static boolean minimapLockNorth = true;
-	/** Minimap panel shape. 0 = circle, 1 = square. Any other value is reset to circle on load. */
+	/** Minimap panel shape. 0 = circle, 1 = square, 2 = pseudo-3D (tilted top-down). Any other value is reset to circle on load. */
 	public static int minimapShape = 0;
+	/** Pseudo-3D tilt angle in degrees. 90 = flat (no tilt), 0 = side-on. Only used when minimapShape == 2. */
+	public static double minimapTiltAngle = 35.0d;
 	// /** Whether the minimap should be square. */
 	// public static boolean minimapSquare = false;
 	// /** Whether to show the speed bar. */
@@ -130,6 +132,9 @@ public class Config {
 	if(prop.get("minimapShape") instanceof String val) {
 		minimapShape = Integer.parseInt(val);
 	}
+	if(prop.get("minimapTiltAngle") instanceof String val) {
+		minimapTiltAngle = Double.parseDouble(val);
+	}
 	if(prop.get("minimapIceDetectionRange") instanceof String val) {
 		minimapIceDetectionRange = Integer.parseInt(val);
 	}
@@ -174,8 +179,11 @@ public class Config {
 		if(barType > 2 || barType < 0) {
 			barType = 0;
 		}
-		if(minimapShape < 0 || minimapShape > 1) {
+		if(minimapShape < 0 || minimapShape > 2) {
 			minimapShape = 0;
+		}
+		if(minimapTiltAngle < 0.0d || minimapTiltAngle > 90.0d) {
+			minimapTiltAngle = 35.0d;
 		}
 	}
 
@@ -198,6 +206,7 @@ public class Config {
 		writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
 		writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
 		writer.write("minimapShape " + Integer.toString(minimapShape) + "\n");
+		writer.write("minimapTiltAngle " + Double.toString(minimapTiltAngle) + "\n");
 		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
 		writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
 		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
