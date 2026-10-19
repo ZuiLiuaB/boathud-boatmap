@@ -31,3 +31,11 @@ bin/
 # fabric
 
 run/
+
+# local agent workspace, JVM crash dumps, one-off patch scripts, stray compile output
+
+.workbuddy/
+hs_err_pid*.log
+replay_pid*.log
+tools/patch_*.py
+/hibi/
