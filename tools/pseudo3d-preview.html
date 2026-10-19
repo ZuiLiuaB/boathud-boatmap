@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>BoatHud 伪3D 小地图 · 离线预览器（CPU 透视条带）</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#d8dee9;
+    --dim:#8b94a7; --accent:#5fb3ff; --warn:#ffb454;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:13px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+  .wrap{display:flex;gap:18px;padding:18px;align-items:flex-start;flex-wrap:wrap}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  #view{display:block;image-rendering:pixelated;border-radius:4px;background:#05070c}
+  .ctl{width:330px;background:var(--panel);border:1px solid var(--line);
+       border-radius:10px;padding:14px}
+  h1{font-size:15px;margin:0 0 10px;font-weight:600}
+  h2{font-size:12px;color:var(--dim);margin:16px 0 8px;font-weight:600;letter-spacing:.4px}
+  .row{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;margin-bottom:7px}
+  .row label{font-size:12px;color:var(--fg)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--accent);text-align:right;font-size:12px}
+  input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);height:16px}
+  .hint{color:var(--dim);font-size:11px;margin:-2px 0 10px}
+  .stat{font-size:11px;color:var(--dim);border-top:1px solid var(--line);
+        margin-top:12px;padding-top:10px;font-variant-numeric:tabular-nums}
+  .stat b{color:var(--fg);font-weight:600}
+  .warn{color:var(--warn)}
+  button{background:#232936;color:var(--fg);border:1px solid var(--line);
+         border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;margin-top:6px;margin-right:6px}
+  button:hover{background:#2c3342}
+  .desc{color:var(--dim);font-size:11px;line-height:1.6;margin-top:10px}
+  code{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage">
+    <canvas id="view" width="128" height="128"></canvas>
+  </div>
+  <div class="ctl">
+    <h1>伪3D 小地图预览 · CPU 透视条带</h1>
+
+    <h2>显示参数</h2>
+    <div class="row"><label>面板大小 (panelSize)</label><span class="val" id="v-panel">128</span></div>
+    <input type="range" id="panel" min="64" max="256" step="2" value="128">
+
+    <div class="row"><label>倾斜角 (tiltAngle, °)</label><span class="val" id="v-tilt">35</span></div>
+    <input type="range" id="tilt" min="0" max="89" step="1" value="35">
+    <div class="hint">90°=完全平放（无倾斜，纯顶视图），0°=侧立（全部压成一条横线）。与 mod 中 theta=90°-tilt 一致。</div>
+
+    <div class="row"><label>世界缩放 (zoom)</label><span class="val" id="v-zoom">1.0</span></div>
+    <input type="range" id="zoom" min="0.25" max="4.0" step="0.05" value="1.0">
+
+    <h2>测试场景</h2>
+    <div class="row"><label>玩家朝向 yaw (°)</label><span class="val" id="v-yaw">0</span></div>
+    <input type="range" id="yaw" min="0" max="360" step="1" value="0">
+
+    <div class="row"><label>冰道宽度 (blocks)</label><span class="val" id="v-width">3</span></div>
+    <input type="range" id="width" min="1" max="9" step="2" value="3">
+
+    <button id="btn-straight">生成直道</button>
+    <button id="btn-curve">生成弯道</button>
+    <div class="hint">拖动 yaw 观察地图随玩家转向旋转（玩家箭头固定朝上）。</div>
+
+    <div class="stat">
+      <b>投影说明：</b><br>
+      绿箭头 = 玩家，固定面板中心、永远朝上。<br>
+      6 个白点 = 其他玩家，放在冰道中心线上，倾斜后仍应落在赛道中心。<br>
+      本预览用与 mod <b>完全相同</b>的 CPU 透视公式（远窄近宽），不再用 CSS 3D 变换。
+    </div>
+
+    <div class="desc">
+      与 mod 的对应关系（透视条带方案）：<br>
+      • 扫描 = <code>preRenderMinimap</code> 的方形顶视图（forward 烘焙进纹理底部，即大 texY）<br>
+      • 逐条 strip 投影：<code>yLocal=(texY-0.5T)</code>，<code>z=yLocal·sinθ</code>，<code>s=d/(d+z)</code>，<code>d=0.8T</code>；再用 <code>fill=clamp(1/(cosθ·sFar),1,4)</code> 整体缩放让远边顶到框顶（地图填满框，低角度不缩小）<br>
+      • <code>screenX=center+offsetX·s</code>，<code>screenY=center−yLocal·cosθ·s</code>（forward 向上）<br>
+      • 玩家箭头在 <code>centerX,centerY</code> 画三角形，不随 yaw 旋转<br>
+      • 其他玩家用同一套公式投影，落在倾斜赛道平面上
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('view');
+const ctx = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
+
+let trackType = 'straight';
+
+function controls(){
+  return {
+    panel: +$('panel').value,
+    tilt: +$('tilt').value,
+    zoom: +$('zoom').value,
+    yaw: +$('yaw').value * Math.PI / 180,
+    width: +$('width').value,
+  };
+}
+
+// Project a texture pixel (texX, texY in [0, T]) to screen coords, mirroring the mod.
+// offsetX = texX - halfT ; yLocal = texY - halfT (forward = +yLocal = texture bottom).
+// z = yLocal * sinT ; s = d / (d + z) ; far (forward) shrinks, near (back) grows.
+// `fill` scales the whole projection so the far edge reaches the frame top (map fills frame).
+function project(texX, texY, c){
+  const T = c.panel;
+  const halfT = T / 2;
+  const theta = (90 - c.tilt) * Math.PI / 180;
+  const sinT = Math.sin(theta);
+  const cosT = Math.cos(theta);
+  const d = T * 0.8;
+  const sFar = d / (d + halfT * sinT);
+  const fill = Math.min(4, Math.max(1, 1 / (cosT * sFar)));
+  const offsetX = texX - halfT;
+  const yLocal = texY - halfT;
+  const z = yLocal * sinT;
+  const s = d / (d + z);
+  const cx = T / 2, cy = T / 2;
+  return {
+    x: cx + offsetX * s * fill,
+    y: cy - yLocal * cosT * s * fill,
+  };
+}
+
+// Convert world-relative (dx, dz) into player-local (forward, right) using MC's right-handed basis.
+// yaw 0 = south (+Z). forward = (-sin, cos), right = (-cos, -sin).
+function worldToLocal(dx, dz, yaw){
+  const fX = -Math.sin(yaw), fZ = Math.cos(yaw);
+  const rX = -Math.cos(yaw), rZ = -Math.sin(yaw);
+  return {
+    forward: dx * fX + dz * fZ,   // projection onto forward
+    right:   dx * rX + dz * rZ,   // projection onto right
+  };
+}
+
+// Map player-local (forward, right) to a texture pixel, baking yaw the same way the mod does.
+// Mod bakes forward -> +offsetZ (texture bottom, large texY).
+function localToTexture(fwd, right, c){
+  const half = c.panel / 2;
+  const u = right / (half * c.zoom);   // -0.5 .. 0.5  (offsetX)
+  const v = fwd / (half * c.zoom);     // -0.5 .. 0.5  (offsetZ, forward -> +)
+  return {
+    texX: (0.5 + u) * c.panel,
+    texY: (0.5 + v) * c.panel,
+  };
+}
+
+function drawFrame(c){
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, c.panel - 2, c.panel - 2);
+}
+
+function drawGrid(c){
+  const T = c.panel;
+  const step = 16;
+  ctx.strokeStyle = 'rgba(90,110,140,0.35)';
+  ctx.lineWidth = 1;
+  // Vertical lines (constant texX)
+  for(let x = 0; x <= T; x += step){
+    const a = project(x, 0, c), b = project(x, T, c);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  // Horizontal lines (constant texY)
+  for(let y = 0; y <= T; y += step){
+    const a = project(0, y, c), b = project(T, y, c);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+}
+
+function drawIcePath(c, halfWidth){
+  const half = c.panel / 2;
+  const worldHalf = half / c.zoom;
+  const segCount = 120;
+  const pts = [];
+  for(let i = 0; i <= segCount; i++){
+    const t = (i / segCount) * 2 - 1;       // -1 .. 1 along forward axis
+    const fwd = t * worldHalf;
+    let right = 0;
+    if(trackType === 'curve') right = Math.sin(fwd * 0.08) * worldHalf * 0.35;
+    pts.push({fwd, right});
+  }
+
+  // Filled road: project left edge then right edge.
+  ctx.fillStyle = 'rgba(95,179,255,0.85)';
+  ctx.beginPath();
+  for(let side = -1; side <= 1; side += 2){
+    for(let i = 0; i < pts.length; i++){
+      const p = pts[i];
+      const r = p.right + side * halfWidth;
+      const tex = localToTexture(p.fwd, r, c);
+      const s = project(tex.texX, tex.texY, c);
+      if(i === 0 && side === -1) ctx.moveTo(s.x, s.y);
+      else ctx.lineTo(s.x, s.y);
+    }
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Centre line (projected).
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let i = 0; i < pts.length; i++){
+    const tex = localToTexture(pts[i].fwd, pts[i].right, c);
+    const s = project(tex.texX, tex.texY, c);
+    if(i === 0) ctx.moveTo(s.x, s.y);
+    else ctx.lineTo(s.x, s.y);
+  }
+  ctx.stroke();
+
+  // 6 other players along the centre line.
+  ctx.fillStyle = '#ffffff';
+  for(let i = 1; i <= 6; i++){
+    const idx = Math.floor((i / 7) * (pts.length - 1));
+    const p = pts[idx];
+    const tex = localToTexture(p.fwd, p.right, c);
+    const s = project(tex.texX, tex.texY, c);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawPlayer(c){
+  const cx = c.panel / 2;
+  const cy = c.panel / 2;
+  const size = Math.max(4, c.panel / 25);
+  const h = size * 2;
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - h - 1);
+  ctx.lineTo(cx - size - 1, cy + 1);
+  ctx.lineTo(cx + size + 1, cy + 1);
+  ctx.fill();
+  ctx.fillStyle = '#00ff66';   // forward = up
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - h);
+  ctx.lineTo(cx - size, cy);
+  ctx.lineTo(cx + size, cy);
+  ctx.fill();
+}
+
+function render(){
+  const c = controls();
+  $('v-panel').textContent = c.panel;
+  $('v-tilt').textContent = c.tilt.toFixed(0);
+  $('v-zoom').textContent = c.zoom.toFixed(2);
+  $('v-yaw').textContent = (c.yaw * 180 / Math.PI).toFixed(0);
+  $('v-width').textContent = c.width;
+
+  canvas.width = c.panel;
+  canvas.height = c.panel;
+  canvas.style.width = c.panel + 'px';
+  canvas.style.height = c.panel + 'px';
+
+  ctx.fillStyle = '#05070c';
+  ctx.fillRect(0, 0, c.panel, c.panel);
+  drawGrid(c);
+  drawIcePath(c, c.width / 2);
+  drawPlayer(c);
+  drawFrame(c);
+}
+
+['panel','tilt','zoom','yaw','width'].forEach(id => {
+  $(id).addEventListener('input', render);
+});
+$('btn-straight').addEventListener('click', () => { trackType = 'straight'; render(); });
+$('btn-curve').addEventListener('click', () => { trackType = 'curve'; render(); });
+
+render();
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ package hibi.boathud;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 
@@ -12,7 +13,11 @@ import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 public class MenuInteg implements ModMenuApi {
 	@Override
 	public ConfigScreenFactory<?> getModConfigScreenFactory() {
-		return parent -> {
+		return parent -> new ConfigScreen(parent);
+	}
+
+	/** Builds the full cloth-config settings screen (export/import live on the wrapper screen). */
+	public static Screen buildClothScreen(Screen parent) {
 			ConfigBuilder builder = ConfigBuilder.create()
 				.setParentScreen(parent)
 				.setTitle(TITLE);
@@ -128,6 +133,14 @@ public class MenuInteg implements ModMenuApi {
 				.setSaveConsumer(newVal -> Config.minimapSize = newVal)
 				.build())
 
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_BORDER_SIZE, Config.minimapBorderSize)
+				.setDefaultValue(1.0d)
+				.setMin(0.0d)
+				.setMax(8.0d)
+				.setTooltip(TIP_MINIMAP_BORDER_SIZE)
+				.setSaveConsumer(newVal -> Config.minimapBorderSize = newVal)
+				.build())
+
 			.addEntry(entryBuilder.startDoubleField(MINIMAP_ZOOM, Config.minimapZoom)
 				.setDefaultValue(1.0d)
 				.setMin(0.5d)
@@ -144,13 +157,37 @@ public class MenuInteg implements ModMenuApi {
 				.setSaveConsumer(newVal -> Config.minimapPlayerIndicatorSize = newVal)
 				.build())
 
-			.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE, Config.minimapOtherPlayersIndicatorSize)
-				.setDefaultValue(2.0d)
-				.setMin(0.5d)
-				.setMax(10.0d)
-				.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE)
-				.setSaveConsumer(newVal -> Config.minimapOtherPlayersIndicatorSize = newVal)
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_PLAYER_INDICATOR_BORDER_SIZE, Config.minimapPlayerIndicatorBorderSize)
+				.setDefaultValue(1.0d)
+				.setMin(0.0d)
+				.setMax(6.0d)
+				.setTooltip(TIP_MINIMAP_PLAYER_INDICATOR_BORDER_SIZE)
+				.setSaveConsumer(newVal -> Config.minimapPlayerIndicatorBorderSize = newVal)
 				.build())
+
+		.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE, Config.minimapOtherPlayersIndicatorSize)
+			.setDefaultValue(2.0d)
+			.setMin(0.5d)
+			.setMax(10.0d)
+			.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE)
+			.setSaveConsumer(newVal -> Config.minimapOtherPlayersIndicatorSize = newVal)
+			.build())
+
+		.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_HEAD_SIZE, Config.minimapOtherPlayersHeadSize)
+			.setDefaultValue(6.0d)
+			.setMin(2.0d)
+			.setMax(16.0d)
+			.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_HEAD_SIZE)
+			.setSaveConsumer(newVal -> Config.minimapOtherPlayersHeadSize = newVal)
+			.build())
+
+		.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_HEAD_FRAME_SIZE, Config.minimapOtherPlayersHeadFrameSize)
+			.setDefaultValue(1.0d)
+			.setMin(0.0d)
+			.setMax(6.0d)
+			.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_HEAD_FRAME_SIZE)
+			.setSaveConsumer(newVal -> Config.minimapOtherPlayersHeadFrameSize = newVal)
+			.build())
 			
 			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_OTHER_PLAYERS_NAMES, Config.minimapShowOtherPlayersNames)
 				.setDefaultValue(false)
@@ -158,34 +195,50 @@ public class MenuInteg implements ModMenuApi {
 				.setSaveConsumer(newVal -> Config.minimapShowOtherPlayersNames = newVal)
 				.build())
 			
-			.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_NAME_SIZE, Config.minimapOtherPlayersNameSize)
-				.setDefaultValue(0.5d)
-				.setMin(0.1d)
-				.setMax(2.0d)
-				.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE)
-				.setSaveConsumer(newVal -> Config.minimapOtherPlayersNameSize = newVal)
-				.build())
+		.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_NAME_SIZE, Config.minimapOtherPlayersNameSize)
+			.setDefaultValue(1.0d)
+			.setMin(0.1d)
+			.setMax(3.0d)
+			.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE)
+			.setSaveConsumer(newVal -> Config.minimapOtherPlayersNameSize = newVal)
+			.build())
+
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_NAME_OFFSET_Y, Config.minimapOtherPlayersNameOffsetY)
+					.setDefaultValue(10.0d)
+					.setMin(-40.0d)
+					.setMax(40.0d)
+					.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_NAME_OFFSET_Y)
+					.setSaveConsumer(newVal -> Config.minimapOtherPlayersNameOffsetY = newVal)
+					.build())
+
+			.addEntry(entryBuilder.startDoubleField(MINIMAP_OTHER_PLAYERS_NAME_OFFSET_X, Config.minimapOtherPlayersNameOffsetX)
+					.setDefaultValue(0.0d)
+					.setMin(-40.0d)
+					.setMax(40.0d)
+					.setTooltip(TIP_MINIMAP_OTHER_PLAYERS_NAME_OFFSET_X)
+					.setSaveConsumer(newVal -> Config.minimapOtherPlayersNameOffsetX = newVal)
+					.build())
+
+			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SPECTATOR_LABEL, Config.minimapSpectatorLabel)
+					.setDefaultValue(false)
+					.setTooltip(TIP_MINIMAP_SPECTATOR_LABEL)
+					.setSaveConsumer(newVal -> Config.minimapSpectatorLabel = newVal)
+					.build())
 			
 			.addEntry(entryBuilder.startBooleanToggle(MINIMAP_LIMIT_PLAYERS_TO_BOUNDS, Config.minimapLimitPlayersToBounds)
 					.setDefaultValue(true)
 					.setTooltip(TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS)
 					.setSaveConsumer(newVal -> Config.minimapLimitPlayersToBounds = newVal)
-					.build())
-
-				.addEntry(entryBuilder.startBooleanToggle(MINIMAP_SHOW_SPEED_COMPARISON, Config.minimapShowSpeedComparison)
-					.setDefaultValue(true)
-					.setTooltip(TIP_MINIMAP_SHOW_SPEED_COMPARISON)
-					.setSaveConsumer(newVal -> Config.minimapShowSpeedComparison = newVal)
 					.build());
+
 
 				// .addEntry(entryBuilder.startBooleanToggle(SHOW_SPEED_BAR, Config.showSpeedBar)
 				// 	.setDefaultValue(true)
 					// 	.setSaveConsumer(newVal -> Config.showSpeedBar = newVal)
 				// 	.build());
 
-			builder.setSavingRunnable(() -> Config.save());
-			return builder.build();
-		};
+		builder.setSavingRunnable(() -> Config.save());
+		return builder.build();
 	}
 
 	public enum BarType {
@@ -228,20 +281,32 @@ public class MenuInteg implements ModMenuApi {
 	TIP_MINIMAP_SHOW_OTHER_PLAYERS = Text.translatable("boathud.tooltip.minimap_show_other_players"),
 	MINIMAP_SIZE = Text.translatable("boathud.option.minimap_size"),
 	TIP_MINIMAP_SIZE = Text.translatable("boathud.tooltip.minimap_size"),
+	MINIMAP_BORDER_SIZE = Text.translatable("boathud.option.minimap_border_size"),
+	TIP_MINIMAP_BORDER_SIZE = Text.translatable("boathud.tooltip.minimap_border_size"),
 	MINIMAP_ZOOM = Text.translatable("boathud.option.minimap_zoom"),
 	TIP_MINIMAP_ZOOM = Text.translatable("boathud.tooltip.minimap_zoom"),
 	MINIMAP_PLAYER_INDICATOR_SIZE = Text.translatable("boathud.option.minimap_player_indicator_size"),
 	TIP_MINIMAP_PLAYER_INDICATOR_SIZE = Text.translatable("boathud.tooltip.minimap_player_indicator_size"),
+	MINIMAP_PLAYER_INDICATOR_BORDER_SIZE = Text.translatable("boathud.option.minimap_player_indicator_border_size"),
+	TIP_MINIMAP_PLAYER_INDICATOR_BORDER_SIZE = Text.translatable("boathud.tooltip.minimap_player_indicator_border_size"),
 	MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.option.minimap_other_players_indicator_size"),
 	TIP_MINIMAP_OTHER_PLAYERS_INDICATOR_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_indicator_size"),
+	MINIMAP_OTHER_PLAYERS_HEAD_SIZE = Text.translatable("boathud.option.minimap_other_players_head_size"),
+	TIP_MINIMAP_OTHER_PLAYERS_HEAD_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_head_size"),
+	MINIMAP_OTHER_PLAYERS_HEAD_FRAME_SIZE = Text.translatable("boathud.option.minimap_other_players_head_frame_size"),
+	TIP_MINIMAP_OTHER_PLAYERS_HEAD_FRAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_head_frame_size"),
 	MINIMAP_SHOW_OTHER_PLAYERS_NAMES = Text.translatable("boathud.option.minimap_show_other_players_names"),
 TIP_MINIMAP_SHOW_OTHER_PLAYERS_NAMES = Text.translatable("boathud.tooltip.minimap_show_other_players_names"),
-MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.option.minimap_other_players_name_size"),
-TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_name_size"),
+	MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.option.minimap_other_players_name_size"),
+	TIP_MINIMAP_OTHER_PLAYERS_NAME_SIZE = Text.translatable("boathud.tooltip.minimap_other_players_name_size"),
+	MINIMAP_OTHER_PLAYERS_NAME_OFFSET_Y = Text.translatable("boathud.option.minimap_other_players_name_offset_y"),
+	TIP_MINIMAP_OTHER_PLAYERS_NAME_OFFSET_Y = Text.translatable("boathud.tooltip.minimap_other_players_name_offset_y"),
+	MINIMAP_OTHER_PLAYERS_NAME_OFFSET_X = Text.translatable("boathud.option.minimap_other_players_name_offset_x"),
+	TIP_MINIMAP_OTHER_PLAYERS_NAME_OFFSET_X = Text.translatable("boathud.tooltip.minimap_other_players_name_offset_x"),
+	MINIMAP_SPECTATOR_LABEL = Text.translatable("boathud.option.minimap_spectator_label"),
+	TIP_MINIMAP_SPECTATOR_LABEL = Text.translatable("boathud.tooltip.minimap_spectator_label"),
 MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.option.minimap_limit_players_to_bounds"),
 TIP_MINIMAP_LIMIT_PLAYERS_TO_BOUNDS = Text.translatable("boathud.tooltip.minimap_limit_players_to_bounds"),
-MINIMAP_SHOW_SPEED_COMPARISON = Text.translatable("boathud.option.minimap_show_speed_comparison"),
-TIP_MINIMAP_SHOW_SPEED_COMPARISON = Text.translatable("boathud.tooltip.minimap_show_speed_comparison"),
 	SHOW_SPEED_BAR = Text.translatable("boathud.option.show_speed_bar"),
 		TIP_EXTENDED = Text.translatable("boathud.tooltip.extended"),
 		TIP_BAR = Text.translatable("boathud.tooltip.bar_type"),

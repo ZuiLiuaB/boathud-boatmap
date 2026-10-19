@@ -193,32 +193,38 @@ public class HudRenderer {
 		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale);
 		int triangleHeight = (int)(indicatorSize * 2.0); // Taller, more pointed triangle
 
-		graphics.getMatrices().push();
-		graphics.getMatrices().translate(centerX, centerY, 0);
+		// Own indicator: hidden in spectator-label mode (the spectated player is drawn as a
+		// labelled head in drawOtherPlayers instead).
+		if(!spectatorLabelActive()) {
+			graphics.getMatrices().push();
+			graphics.getMatrices().translate(centerX, centerY, 0);
 
-		// Only rotate the player indicator when the map itself is locked to north
-		if(Config.minimapLockNorth) {
-			// Calculate player's actual direction (inverted to fix rotation direction)
-			float playerRotation = (float)Math.toRadians(playerYaw + 180);
-			graphics.getMatrices().multiply(new Quaternionf().rotateZ(playerRotation));
+			// Only rotate the player indicator when the map itself is locked to north
+			if(Config.minimapLockNorth) {
+				// Calculate player's actual direction (inverted to fix rotation direction)
+				float playerRotation = (float)Math.toRadians(playerYaw + 180);
+				graphics.getMatrices().multiply(new Quaternionf().rotateZ(playerRotation));
+			}
+
+			// Draw black border triangle (slightly larger), outline thickness configurable (0 = none)
+			int borderSize = Math.max(0, (int)Math.round(Config.minimapPlayerIndicatorBorderSize));
+			if(borderSize > 0) {
+				drawTriangle(graphics,
+					0, -triangleHeight - borderSize, // Top point
+					-indicatorSize - borderSize, borderSize, // Bottom left
+					indicatorSize + borderSize, borderSize, // Bottom right
+					0xFF000000); // Black border
+			}
+
+			// Draw filled triangle with color based on leather armor
+			drawTriangle(graphics,
+				0, -triangleHeight, // Top point
+				-indicatorSize, 0, // Bottom left
+				indicatorSize, 0, // Bottom right
+				getLocalPlayerIndicatorColor());
+
+			graphics.getMatrices().pop();
 		}
-
-		// Draw black border triangle (slightly larger)
-		int borderSize = 1;
-		drawTriangle(graphics,
-			0, -triangleHeight - borderSize, // Top point
-			-indicatorSize - borderSize, borderSize, // Bottom left
-			indicatorSize + borderSize, borderSize, // Bottom right
-			0xFF000000); // Black border
-
-		// Draw filled triangle with color based on leather armor
-		drawTriangle(graphics,
-			0, -triangleHeight, // Top point
-			-indicatorSize, 0, // Bottom left
-			indicatorSize, 0, // Bottom right
-			getLocalPlayerIndicatorColor());
-
-		graphics.getMatrices().pop();
 
 		// Direction indicator (north arrow) - always points north, so rotate opposite to the map
 		graphics.getMatrices().push();
@@ -234,19 +240,21 @@ public class HudRenderer {
 			drawOtherPlayers(graphics, centerX, centerY, playerPos, scale, minimapCache.smoothYaw);
 		}
 
-		// Panel border
-		int borderThickness = 1;
-		if(square) {
-			int x0 = posX - borderThickness;
-			int y0 = posY - borderThickness;
-			int x1 = posX + viewSize + borderThickness;
-			int y1 = posY + viewSize + borderThickness;
-			graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
-			graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
-			graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
-			graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
-		} else {
-			drawCircle(graphics, centerX, centerY, half + borderThickness, 0xFF000000);
+		// Panel border (thickness configurable, 0 = none)
+		int borderThickness = Math.max(0, (int)Math.round(Config.minimapBorderSize));
+		if(borderThickness > 0) {
+			if(square) {
+				int x0 = posX - borderThickness;
+				int y0 = posY - borderThickness;
+				int x1 = posX + viewSize + borderThickness;
+				int y1 = posY + viewSize + borderThickness;
+				graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
+				graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
+				graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
+				graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
+			} else {
+				drawCircle(graphics, centerX, centerY, half + borderThickness, 0xFF000000);
+			}
 		}
 	}
 
@@ -345,11 +353,13 @@ public class HudRenderer {
 					// Match the normal map basis: +X is screen-right and +Z is screen-down.
 					// Stretch only the sampled forward/back range; the final plane compresses it back.
 					double planeZ = offsetZ / pseudoVerticalScale;
-					worldX = (int)(playerPos.x + (offsetX * cosYaw - planeZ * sinYaw) * zoom);
-					worldZ = (int)(playerPos.z + (offsetX * sinYaw + planeZ * cosYaw) * zoom);
+					// floor (not cast): a cast truncates towards zero and shifts the whole
+					// scan by one block at negative coordinates.
+					worldX = MathHelper.floor(playerPos.x + (offsetX * cosYaw - planeZ * sinYaw) * zoom);
+					worldZ = MathHelper.floor(playerPos.z + (offsetX * sinYaw + planeZ * cosYaw) * zoom);
 				} else {
-					worldX = (int)(playerPos.x + offsetX * zoom);
-					worldZ = (int)(playerPos.z + offsetZ * zoom);
+					worldX = MathHelper.floor(playerPos.x + offsetX * zoom);
+					worldZ = MathHelper.floor(playerPos.z + offsetZ * zoom);
 				}
 				preRenderedMinimap[x + z * textureSize] = scanIceAt(worldX, worldZ, playerY, mutablePos, abovePos);
 			}
@@ -478,40 +488,60 @@ public class HudRenderer {
 		return block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE;
 	}
 	
-	/** Determine the indicator color based on player's leather armor color */
-	private int getPlayerIndicatorColor(net.minecraft.entity.player.PlayerEntity player) {
-		// Default color for other players: blue
-		int defaultColor = 0xFF0000FF;
-		
-		// Check if player is wearing leather armor
-		for (net.minecraft.item.ItemStack armorItem : player.getArmorItems()) {
-			if (armorItem.getItem() instanceof ArmorItem) {
-				// Get color from leather armor using DataComponentTypes
+	/** Returns the dye colour of the first dyed leather armour piece, or null when the player wears none. */
+	private static Integer getLeatherArmorColor(net.minecraft.entity.player.PlayerEntity player) {
+		for(net.minecraft.item.ItemStack armorItem : player.getArmorItems()) {
+			if(armorItem.getItem() instanceof ArmorItem) {
 				var dyeColor = armorItem.get(DataComponentTypes.DYED_COLOR);
-				if (dyeColor != null) {
-					// Get the RGB color value from DyedColorComponent
-					int color = dyeColor.rgb();
-					
-					// Convert RGB color to ARGB with full alpha
-					int alpha = 0xFF;
-					int red = (color >> 16) & 0xFF;
-					int green = (color >> 8) & 0xFF;
-					int blue = color & 0xFF;
-					
-					// Check if color is red or blue
-					if (red > 150 && green < 100 && blue < 100) {
-						// Red armor: use red color
-						return (alpha << 24) | (0xFF << 16) | (0x00 << 8) | 0x00; // Red
-					} else if (red < 100 && green < 100 && blue > 150) {
-						// Blue armor: use blue color
-						return (alpha << 24) | (0x00 << 16) | (0x00 << 8) | 0xFF; // Blue
-					}
+				if(dyeColor != null) {
+					return 0xFF000000 | (dyeColor.rgb() & 0xFFFFFF);
 				}
 			}
 		}
-		
-		// Default color if no red/blue leather armor
-		return defaultColor;
+		return null;
+	}
+
+	/**
+	 * Frame colour for another player's head icon: their leather armour dye colour in team
+	 * matches (any dyed leather piece wins), falling back to blue when none is worn.
+	 */
+	private int getPlayerIndicatorColor(net.minecraft.entity.player.PlayerEntity player) {
+		Integer leather = getLeatherArmorColor(player);
+		return leather != null ? leather : 0xFF0000FF;
+	}
+
+	/**
+	 * Cached per-player appearance for the minimap: indicator colour, name and the measured
+	 * name width. These used to be recomputed for every player on every frame - armour
+	 * component lookups, name strings and glyph measurements - which dominated the HUD frame
+	 * cost on a crowded server. They only change a few times per second, so the whole cache
+	 * is dropped every 5 ticks (players who log off cannot leak) and misses fill on demand.
+	 */
+	private static final class PlayerAppearance {
+		int indicatorColor;
+		String name;
+		int nameWidth;
+	}
+
+	private final java.util.Map<java.util.UUID, PlayerAppearance> appearanceCache = new java.util.HashMap<>();
+	private long appearanceCacheTick = Long.MIN_VALUE;
+
+	private PlayerAppearance getPlayerAppearance(net.minecraft.entity.player.PlayerEntity player) {
+		long now = this.client.world != null ? this.client.world.getTime() : 0L;
+		if(now != appearanceCacheTick) {
+			appearanceCacheTick = now;
+			if(now % 5 == 0) appearanceCache.clear();
+		}
+		java.util.UUID id = player.getUuid();
+		PlayerAppearance appearance = appearanceCache.get(id);
+		if(appearance == null) {
+			appearance = new PlayerAppearance();
+			appearance.indicatorColor = getPlayerIndicatorColor(player);
+			appearance.name = player.getName().getString();
+			appearance.nameWidth = this.client.textRenderer.getWidth(appearance.name);
+			appearanceCache.put(id, appearance);
+		}
+		return appearance;
 	}
 	
 	/** Get the indicator color for the local player */
@@ -549,12 +579,45 @@ public class HudRenderer {
 		return 0xFFFF0000;
 	}
 	
+	/**
+	 * Draws another player's head (their skin texture) centred on (centerX, centerY), framed by
+	 * their leather armour colour (or blue).
+	 */
+	private void drawPlayerHead(DrawContext graphics, net.minecraft.client.network.AbstractClientPlayerEntity player,
+			int centerX, int centerY, int size, int frameColor) {
+		int half = size / 2;
+		int x0 = centerX - half;
+		int y0 = centerY - half;
+		int x1 = x0 + size;
+		int y1 = y0 + size;
+
+		// Team frame: leather armour dye colour, or blue when none is worn (0 = no frame)
+		int frameSize = Math.max(0, (int)Math.round(Config.minimapOtherPlayersHeadFrameSize));
+		if(frameSize > 0) {
+			graphics.fill(x0 - frameSize, y0 - frameSize, x1 + frameSize, y1 + frameSize, frameColor);
+		}
+		// Black backing so skin transparency still reads as an icon
+		graphics.fill(x0, y0, x1, y1, 0xFF000000);
+
+		net.minecraft.client.util.SkinTextures skin = player.getSkinTextures();
+		if(skin == null) return;
+		Identifier skinId = skin.texture();
+		if(skinId == null) return;
+		// On a 64x64 skin the head is the 8x8 region at (8,8) and the hat overlay at (40,8).
+		graphics.drawTexture(RenderLayer::getGuiTextured, skinId, x0, y0, 8f, 8f, size, size, 8, 8, 64, 64);
+		graphics.drawTexture(RenderLayer::getGuiTextured, skinId, x0, y0, 40f, 8f, size, size, 8, 8, 64, 64);
+	}
+
 	/** Check if the block above is transparent */
 	private boolean hasTransparentAbove(BlockPos pos) {
 		if(this.client.world == null) return false;
 		BlockState state = this.client.world.getBlockState(pos);
-		// In newer Minecraft versions, use isReplaceable instead of getMaterial
-		return state.isAir() || state.isReplaceable();
+		if(state.isAir()) return true;
+		// Blocks you can walk straight through (tripwire, torches, signs, buttons, levers,
+		// redstone wire, flowers, grass, snow layers, vines, light blocks...) mostly fail
+		// isReplaceable(), yet they must NOT hide the ice below them. The reliable test is
+		// whether the block has any collision shape at all - pass-through blocks have none.
+		return state.getCollisionShape(this.client.world, pos).isEmpty();
 	}
 	
 	/** Calculate the color of ice based on its Y offset from player */
@@ -598,9 +661,18 @@ public class HudRenderer {
 		return (alpha << 24) | (gray << 16) | (gray << 8) | gray;
 	}
 	
-	/** Draw other players in boats on the minimap as blue small squares */
+	/** True when spectator-label mode is on and the local player is currently spectating. */
+	private boolean spectatorLabelActive() {
+		return Config.minimapSpectatorLabel && this.client.player != null && this.client.player.isSpectator();
+	}
+
+	/** Draw other players in boats on the minimap as head icons framed by their team colour */
 	private void drawOtherPlayers(DrawContext graphics, int centerX, int centerY, Vec3d playerPos, double scale, float currentYaw) {
 		if(this.client.world == null) return;
+
+		// In spectator-label mode the spectated player (the camera entity) must still be drawn
+		// as a labelled head, so only skip it when the mode is off.
+		boolean spectatorLabel = spectatorLabelActive();
 		
 		// Calculate minimap radius
 		int renderedSize = (int)(Config.minimapSize * scale);
@@ -609,121 +681,102 @@ public class HudRenderer {
 		// Get all players in the world (limit to improve performance)
 		int maxPlayersToRender = 16;
 		int playersRendered = 0;
+		double zoom = Config.minimapZoom;
 		
-		for(net.minecraft.entity.player.PlayerEntity otherPlayer : this.client.world.getPlayers()) {
+		// Loop-invariant rotation basis - hoisted out of the per-player loop so the trig
+		// runs once per frame instead of once per player.
+		double rotation = Math.toRadians(-currentYaw);
+		double sin = Math.sin(rotation);
+		double cos = Math.cos(rotation);
+		
+		for(net.minecraft.client.network.AbstractClientPlayerEntity otherPlayer : this.client.world.getPlayers()) {
 			// Limit the number of players rendered to improve performance
 			if(playersRendered >= maxPlayersToRender) break;
 			
 			// Skip the local player (or the player we're spectating)
-			if(otherPlayer == this.client.player || otherPlayer == this.client.getCameraEntity()) continue;
+			if(otherPlayer == this.client.player) continue;
+			if(!spectatorLabel && otherPlayer == this.client.getCameraEntity()) continue;
 			
-			// Check if player is in a boat
-			if(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity) {
-				// Calculate player's position relative to the local player
+			// Check if player is in a boat (one getVehicle() call - it returns null when the player has none)
+			if(otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity) {
+				// Relative coordinates stay in full double precision all the way to the final
+				// pixel rounding - no (int) truncation - so sub-block motion maps smoothly.
 				Vec3d otherPos = otherPlayer.getPos();
 				
 				// Calculate relative coordinates with precise floating-point values
 				double relX = otherPos.x - playerPos.x;
 				double relZ = otherPos.z - playerPos.z;
 				
-				// Apply rotation to match map rotation (invert rotation to match map direction)
-				float rotation = (float)Math.toRadians(-currentYaw);
-				float sin = MathHelper.sin(rotation);
-				float cos = MathHelper.cos(rotation);
-				
-				// Rotate the relative coordinates
-				float rotatedX = (float)relX * cos - (float)relZ * sin;
-				float rotatedZ = (float)relX * sin + (float)relZ * cos;
+				// Rotate the relative coordinates (basis hoisted above the loop)
+				double rotatedX = relX * cos - relZ * sin;
+				double rotatedZ = relX * sin + relZ * cos;
 				
 				// Calculate screen coordinates with scale and zoom
 				// Apply zoom factor to relative coordinates to match minimap zoom level
-				int screenX = centerX + (int)(rotatedX * scale / Config.minimapZoom);
-				int screenY = centerY + (int)(rotatedZ * scale / Config.minimapZoom);
+				double screenXd = centerX + rotatedX * scale / zoom;
+				double screenYd = centerY + rotatedZ * scale / zoom;
 				
 				// Limit player indicator within minimap bounds if enabled
 				if(Config.minimapLimitPlayersToBounds) {
-					double dx = screenX - centerX;
-					double dy = screenY - centerY;
+					double dx = screenXd - centerX;
+					double dy = screenYd - centerY;
 					if(Config.minimapShape == 1) {
 						// Square panel: clamp each axis independently so the marker slides along the edge
-						screenX = centerX + (int)Math.round(MathHelper.clamp(dx, -radius, radius));
-						screenY = centerY + (int)Math.round(MathHelper.clamp(dy, -radius, radius));
+						screenXd = centerX + MathHelper.clamp(dx, -radius, radius);
+						screenYd = centerY + MathHelper.clamp(dy, -radius, radius);
 					} else {
 						// Circular panel: project onto the rim
 						double distance = Math.sqrt(dx * dx + dy * dy);
 						if(distance > radius) {
 							double angle = Math.atan2(dy, dx);
-							screenX = centerX + (int)(Math.cos(angle) * radius);
-							screenY = centerY + (int)(Math.sin(angle) * radius);
+							screenXd = centerX + Math.cos(angle) * radius;
+							screenYd = centerY + Math.sin(angle) * radius;
 						}
 					}
 				}
+				int screenX = (int)Math.round(screenXd);
+				int screenY = (int)Math.round(screenYd);
 				
-				// Draw small square for other player with customizable size
-			int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale); // Use customizable size
-			int borderSize = 1;
-			
-			// Get speed comparison color if enabled
-			int borderColor = 0xFF000000; // Default black border
-			if(Config.minimapShowSpeedComparison && this.client.player != null) {
-				// Get local player speed
-				Vec3d localVelocity = this.client.player.getVelocity();
-				double localSpeed = Math.sqrt(localVelocity.x * localVelocity.x + localVelocity.z * localVelocity.z);
+				// Head icon size from its own setting
+				int headSize = Math.max(2, (int)Math.round(Config.minimapOtherPlayersHeadSize * scale));
+
+				// Head icon framed by the team leather colour (or blue when none is worn).
+				// Colour/name/name width come from the ~4 Hz appearance cache.
+				PlayerAppearance appearance = getPlayerAppearance(otherPlayer);
+				drawPlayerHead(graphics, otherPlayer, screenX, screenY, headSize, appearance.indicatorColor);
+
+			// Draw player name if enabled
+			if(Config.minimapShowOtherPlayersNames) {
+				String playerName = appearance.name;
 				
-				// Get other player speed
-				Vec3d otherVelocity = otherPlayer.getVelocity();
-				double otherSpeed = Math.sqrt(otherVelocity.x * otherVelocity.x + otherVelocity.z * otherVelocity.z);
+				// Set name scale
+				float nameScale = (float)Config.minimapOtherPlayersNameSize;
 				
-				// Compare speeds and set border color
-				if(otherSpeed > localSpeed) {
-					// Other player is faster: green border
-					borderColor = 0xFF00FF00;
-				} else if(otherSpeed < localSpeed) {
-						// Other player is slower: orange border (more prominent than yellow)
-						borderColor = 0xFFFF8000;
-					}
-				// If speeds are equal, keep black border
+				// Vertical anchor: above the head the text bottom sits at (head top - gap),
+				// below the head the text top sits at (head bottom + gap).
+				// Manual offsets from the head icon centre: Y negative = above, positive = below;
+				// X negative = left, positive = right. Both in screen pixels.
+				double nameY = screenY + Config.minimapOtherPlayersNameOffsetY;
+				double nameX = screenX + Config.minimapOtherPlayersNameOffsetX;
+
+				// Save current matrix state
+				graphics.getMatrices().push();
+
+				// Apply scale
+				graphics.getMatrices().translate((float)nameX, (float)nameY, 0);
+				graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
+				
+				// Calculate centered text position
+				int textWidth = appearance.nameWidth;
+				int centeredX = -textWidth / 2;
+				int textY = 0;
+				
+				// Draw text with shadow for better visibility
+				graphics.drawTextWithShadow(this.client.textRenderer, playerName, centeredX, textY, 0xFFFFFF);
+				
+				// Restore matrix state
+				graphics.getMatrices().pop();
 			}
-			
-			// Draw border square (slightly larger)
-			graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize, 
-				screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, borderColor);
-			
-			// Draw filled square with color based on leather armor
-			int playerColor = getPlayerIndicatorColor(otherPlayer);
-			graphics.fill(screenX - indicatorSize, screenY - indicatorSize, 
-				screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
-				
-				// Draw player name if enabled
-				if(Config.minimapShowOtherPlayersNames) {
-					// Get player name
-					String playerName = otherPlayer.getName().getString();
-					
-					// Calculate name position (above the player indicator)
-					int nameX = screenX;
-					int nameY = screenY - indicatorSize - 2;
-					
-					// Set name scale
-					float nameScale = (float)Config.minimapOtherPlayersNameSize;
-					
-					// Save current matrix state
-					graphics.getMatrices().push();
-					
-					// Apply scale
-					graphics.getMatrices().translate(nameX, nameY, 0);
-					graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
-					
-					// Calculate centered text position
-					int textWidth = this.client.textRenderer.getWidth(playerName);
-					int centeredX = -textWidth / 2;
-					int textY = 0;
-					
-					// Draw text with shadow for better visibility
-					graphics.drawTextWithShadow(this.client.textRenderer, playerName, centeredX, textY, 0xFFFFFF);
-					
-					// Restore matrix state
-					graphics.getMatrices().pop();
-				}
 				
 				playersRendered++;
 			}
@@ -762,18 +815,21 @@ public class HudRenderer {
 		}
 
 		// Player indicator at the panel centre, always up, not tilted.
-		int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale);
-		int triangleHeight = (int)(indicatorSize * 2.0);
-		drawTriangle(graphics,
-			centerX, centerY - triangleHeight - 1,
-			centerX - indicatorSize - 1, centerY + 1,
-			centerX + indicatorSize + 1, centerY + 1,
-			0xFF000000);
-		drawTriangle(graphics,
-			centerX, centerY - triangleHeight,
-			centerX - indicatorSize, centerY,
-			centerX + indicatorSize, centerY,
-			getLocalPlayerIndicatorColor());
+		// Hidden in spectator-label mode (the spectated player is drawn as a labelled head instead).
+		if(!spectatorLabelActive()) {
+			int indicatorSize = (int)(Config.minimapPlayerIndicatorSize * scale);
+			int triangleHeight = (int)(indicatorSize * 2.0);
+			drawTriangle(graphics,
+				centerX, centerY - triangleHeight - 1,
+				centerX - indicatorSize - 1, centerY + 1,
+				centerX + indicatorSize + 1, centerY + 1,
+				0xFF000000);
+			drawTriangle(graphics,
+				centerX, centerY - triangleHeight,
+				centerX - indicatorSize, centerY,
+				centerX + indicatorSize, centerY,
+				getLocalPlayerIndicatorColor());
+		}
 
 		// Other players projected onto the tilted plane.
 		if(Config.minimapShowOtherPlayers) {
@@ -782,21 +838,27 @@ public class HudRenderer {
 
 		graphics.disableScissor();
 
-		// Square border in screen space, unchanged size.
-		int borderThickness = 1;
-		int x0 = posX - borderThickness;
-		int y0 = posY - borderThickness;
-		int x1 = posX + viewSize + borderThickness;
-		int y1 = posY + viewSize + borderThickness;
-		graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
-		graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
-		graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
-		graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
+		// Square border in screen space, unchanged size (thickness configurable, 0 = none).
+		int borderThickness = Math.max(0, (int)Math.round(Config.minimapBorderSize));
+		if(borderThickness > 0) {
+			int x0 = posX - borderThickness;
+			int y0 = posY - borderThickness;
+			int x1 = posX + viewSize + borderThickness;
+			int y1 = posY + viewSize + borderThickness;
+			graphics.fill(x0, y0, x1, y0 + borderThickness, 0xFF000000); // top
+			graphics.fill(x0, y1 - borderThickness, x1, y1, 0xFF000000); // bottom
+			graphics.fill(x0, y0, x0 + borderThickness, y1, 0xFF000000); // left
+			graphics.fill(x1 - borderThickness, y0, x1, y1, 0xFF000000); // right
+		}
 	}
 
 	/** Draw other players on the perspective-tilted pseudo-3D minimap. */
 	private void drawOtherPlayersPseudo3D(DrawContext graphics, Vec3d playerPos, double scale, int centerX, int centerY) {
 		if(this.client.world == null) return;
+
+		// In spectator-label mode the spectated player (the camera entity) must still be drawn
+		// as a labelled head, so only skip it when the mode is off.
+		boolean spectatorLabel = spectatorLabelActive();
 
 		int maxPlayersToRender = 16;
 		int playersRendered = 0;
@@ -811,10 +873,11 @@ public class HudRenderer {
 		double pseudoVerticalScale = Math.max(0.15d,
 			Math.sin(Math.toRadians(Config.minimapTiltAngle)));
 
-		for(net.minecraft.entity.player.PlayerEntity otherPlayer : this.client.world.getPlayers()) {
+		for(net.minecraft.client.network.AbstractClientPlayerEntity otherPlayer : this.client.world.getPlayers()) {
 			if(playersRendered >= maxPlayersToRender) break;
-			if(otherPlayer == this.client.player || otherPlayer == this.client.getCameraEntity()) continue;
-			if(!(otherPlayer.hasVehicle() && otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity)) continue;
+			if(otherPlayer == this.client.player) continue;
+			if(!spectatorLabel && otherPlayer == this.client.getCameraEntity()) continue;
+			if(!(otherPlayer.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity)) continue;
 
 			Vec3d otherPos = otherPlayer.getPos();
 			double relX = otherPos.x - playerPos.x;
@@ -839,37 +902,25 @@ public class HudRenderer {
 			int screenX = centerX + (int)Math.round(ox);
 			int screenY = centerY + (int)Math.round(-oy * pseudoVerticalScale);
 
-			int indicatorSize = (int)(Config.minimapOtherPlayersIndicatorSize * scale);
-			int borderSize = 1;
-			int borderColor = 0xFF000000;
-			if(Config.minimapShowSpeedComparison && this.client.player != null) {
-				Vec3d localVelocity = this.client.player.getVelocity();
-				double localSpeed = Math.sqrt(localVelocity.x * localVelocity.x + localVelocity.z * localVelocity.z);
-				Vec3d otherVelocity = otherPlayer.getVelocity();
-				double otherSpeed = Math.sqrt(otherVelocity.x * otherVelocity.x + otherVelocity.z * otherVelocity.z);
-				if(otherSpeed > localSpeed) {
-					borderColor = 0xFF00FF00;
-				} else if(otherSpeed < localSpeed) {
-					borderColor = 0xFFFF8000;
-				}
-			}
+			int headSize = Math.max(2, (int)Math.round(Config.minimapOtherPlayersHeadSize * scale));
 
-			graphics.fill(screenX - indicatorSize - borderSize, screenY - indicatorSize - borderSize,
-				screenX + indicatorSize + borderSize + 1, screenY + indicatorSize + borderSize + 1, borderColor);
-			int playerColor = getPlayerIndicatorColor(otherPlayer);
-			graphics.fill(screenX - indicatorSize, screenY - indicatorSize,
-				screenX + indicatorSize + 1, screenY + indicatorSize + 1, playerColor);
+			PlayerAppearance appearance = getPlayerAppearance(otherPlayer);
+			drawPlayerHead(graphics, otherPlayer, screenX, screenY, headSize, appearance.indicatorColor);
 
-			if(Config.minimapShowOtherPlayersNames) {
-				String playerName = otherPlayer.getName().getString();
-				float nameScale = (float)Config.minimapOtherPlayersNameSize;
-				graphics.getMatrices().push();
-				graphics.getMatrices().translate(screenX, screenY - indicatorSize - 2, 0);
-				graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
-				int textWidth = this.client.textRenderer.getWidth(playerName);
-				graphics.drawTextWithShadow(this.client.textRenderer, playerName, -textWidth / 2, 0, 0xFFFFFF);
-				graphics.getMatrices().pop();
-			}
+		if(Config.minimapShowOtherPlayersNames) {
+			String playerName = appearance.name;
+			float nameScale = (float)Config.minimapOtherPlayersNameSize;
+			// Manual offsets from the head icon centre: Y negative = above, positive = below;
+			// X negative = left, positive = right. Both in screen pixels.
+			double nameY = screenY + Config.minimapOtherPlayersNameOffsetY;
+			double nameX = screenX + Config.minimapOtherPlayersNameOffsetX;
+			graphics.getMatrices().push();
+			graphics.getMatrices().translate((float)nameX, (float)nameY, 0);
+			graphics.getMatrices().scale(nameScale, nameScale, 1.0f);
+			int textWidth = appearance.nameWidth;
+			graphics.drawTextWithShadow(this.client.textRenderer, playerName, -textWidth / 2, 0, 0xFFFFFF);
+			graphics.getMatrices().pop();
+		}
 
 			playersRendered++;
 		}

@@ -4,9 +4,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.Properties;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
 
 public class Config {
 	
@@ -65,20 +68,32 @@ public class Config {
 	public static boolean minimapShowOtherPlayers = true;
 	/** Size of the minimap in pixels (higher = more detailed but more resource intensive). */
 	public static int minimapSize = 128;
+	/** Thickness of the minimap panel border in pixels. 0 = no border. */
+	public static double minimapBorderSize = 1.0d;
 	/** Zoom level for the minimap (controls how much world area is shown). Higher values = more zoomed out. */
 	public static double minimapZoom = 1.0d;
 	/** Size of the local player indicator on the minimap. */
 	public static double minimapPlayerIndicatorSize = 3.0d;
+	/** Thickness of the black outline around the local player arrow, in pixels. 0 = no outline. */
+	public static double minimapPlayerIndicatorBorderSize = 1.0d;
 	/** Size of other players' indicators on the minimap. */
 	public static double minimapOtherPlayersIndicatorSize = 2.0d;
+	/** Size of other players' head icons on the minimap. The team leather armour colour is used as the icon border. */
+	public static double minimapOtherPlayersHeadSize = 6.0d;
+	/** Thickness of the team-colour frame around other players' head icons, in pixels. 0 = no frame. */
+	public static double minimapOtherPlayersHeadFrameSize = 1.0d;
 	/** Whether to show other players' names on the minimap. */
 	public static boolean minimapShowOtherPlayersNames = false;
 	/** Size of other players' names on the minimap. */
-	public static double minimapOtherPlayersNameSize = 0.5d;
+	public static double minimapOtherPlayersNameSize = 1.0d;
+	/** Vertical offset of other players' names from the head icon centre, in screen pixels. Negative = above, positive = below. */
+	public static double minimapOtherPlayersNameOffsetY = 10.0d;
+	/** Horizontal offset of other players' names from the head icon centre, in screen pixels. Negative = left, positive = right. */
+	public static double minimapOtherPlayersNameOffsetX = 0.0d;
+	/** In spectator mode, hide the local player's own arrow and label the spectated player instead. */
+	public static boolean minimapSpectatorLabel = false;
 	/** Whether to limit other players' indicators within the minimap boundaries. */
 	public static boolean minimapLimitPlayersToBounds = true;
-	/** Whether to show speed comparison indicators for other players. */
-	public static boolean minimapShowSpeedComparison = true;
 
 	private Config() {}
 
@@ -95,6 +110,26 @@ public class Config {
 			Properties prop = new Properties();
 			prop.load(br);
 			br.close();
+			applyProperties(prop);
+		}
+		catch (Exception e) {
+			// Empty catch block
+		}
+		// Sanity check
+		if(barType > 2 || barType < 0) {
+			barType = 0;
+		}
+		if(minimapShape < 0 || minimapShape > 2) {
+			minimapShape = 0;
+		}
+		if(minimapTiltAngle < 0.0d || minimapTiltAngle > 90.0d) {
+			minimapTiltAngle = 35.0d;
+		}
+	}
+
+	/** Applies a parsed properties set onto the static fields. Shared by load() and clipboard import. */
+	public static void applyProperties(Properties prop) {
+		try {
 			if(prop.get("enabled") instanceof String val) {
 				enabled = Boolean.parseBoolean(val);
 			}
@@ -147,14 +182,26 @@ public class Config {
 	if(prop.get("minimapSize") instanceof String val) {
 		minimapSize = Integer.parseInt(val);
 	}
+	if(prop.get("minimapBorderSize") instanceof String val) {
+		minimapBorderSize = Double.parseDouble(val);
+	}
 	if(prop.get("minimapZoom") instanceof String val) {
 		minimapZoom = Double.parseDouble(val);
 	}
 	if(prop.get("minimapPlayerIndicatorSize") instanceof String val) {
 			minimapPlayerIndicatorSize = Double.parseDouble(val);
 		}
+		if(prop.get("minimapPlayerIndicatorBorderSize") instanceof String val) {
+			minimapPlayerIndicatorBorderSize = Double.parseDouble(val);
+		}
 		if(prop.get("minimapOtherPlayersIndicatorSize") instanceof String val) {
 			minimapOtherPlayersIndicatorSize = Double.parseDouble(val);
+		}
+		if(prop.get("minimapOtherPlayersHeadSize") instanceof String val) {
+			minimapOtherPlayersHeadSize = Double.parseDouble(val);
+		}
+		if(prop.get("minimapOtherPlayersHeadFrameSize") instanceof String val) {
+			minimapOtherPlayersHeadFrameSize = Double.parseDouble(val);
 		}
 		if(prop.get("minimapShowOtherPlayersNames") instanceof String val) {
 			minimapShowOtherPlayersNames = Boolean.parseBoolean(val);
@@ -162,28 +209,33 @@ public class Config {
 		if(prop.get("minimapOtherPlayersNameSize") instanceof String val) {
 				minimapOtherPlayersNameSize = Double.parseDouble(val);
 			}
+			// Legacy keys (above/gap) migrated into the unified Y offset: text top relative to the
+			// head centre. Head size default 6, font line height 9.
+			if(prop.get("minimapOtherPlayersNameAbove") instanceof String val) {
+				boolean legacyAbove = Boolean.parseBoolean(val);
+				double legacyGap = 4.0d;
+				if(prop.get("minimapOtherPlayersNameOffset") instanceof String gapVal) {
+					legacyGap = Double.parseDouble(gapVal);
+				}
+				minimapOtherPlayersNameOffsetY = legacyAbove ? -(6.0d + legacyGap + 9.0d) : (6.0d + legacyGap);
+			}
+			if(prop.get("minimapOtherPlayersNameOffsetX") instanceof String val) {
+				minimapOtherPlayersNameOffsetX = Double.parseDouble(val);
+			}
+			if(prop.get("minimapOtherPlayersNameOffsetY") instanceof String val) {
+				minimapOtherPlayersNameOffsetY = Double.parseDouble(val);
+			}
+			if(prop.get("minimapSpectatorLabel") instanceof String val) {
+				minimapSpectatorLabel = Boolean.parseBoolean(val);
+			}
 			if(prop.get("minimapLimitPlayersToBounds") instanceof String val) {
 					minimapLimitPlayersToBounds = Boolean.parseBoolean(val);
-				}
-				if(prop.get("minimapShowSpeedComparison") instanceof String val) {
-					minimapShowSpeedComparison = Boolean.parseBoolean(val);
 				}
 				// if(prop.get("showSpeedBar") instanceof String val) {
 				// showSpeedBar = Boolean.parseBoolean(val);
 				// }
 		}
-		catch (Exception e) {
-			// Empty catch block
-		}
-		// Sanity check
-		if(barType > 2 || barType < 0) {
-			barType = 0;
-		}
-		if(minimapShape < 0 || minimapShape > 2) {
-			minimapShape = 0;
-		}
-		if(minimapTiltAngle < 0.0d || minimapTiltAngle > 90.0d) {
-			minimapTiltAngle = 35.0d;
+		catch (Exception ignored) {
 		}
 	}
 
@@ -194,35 +246,79 @@ public class Config {
 		File file = new File(FabricLoader.getInstance().getConfigDir().toFile(), "boathud.properties");
 		try {
 			FileWriter writer = new FileWriter(file);
-			writer.write("enabled " + Boolean.toString(enabled) + "\n");
-			writer.write("extended " + Boolean.toString(extended) + "\n");
-			writer.write("barType " + Integer.toString(barType) + "\n");
-			writer.write("speedUnit " + Integer.toString(configSpeedType) + "\n");
-			// Minimap settings
-		writer.write("minimapEnabled " + Boolean.toString(minimapEnabled) + "\n");
-		writer.write("minimapX " + Integer.toString(minimapX) + "\n");
-	writer.write("minimapY " + Integer.toString(minimapY) + "\n");
-	writer.write("minimapYOffset " + Integer.toString(minimapYOffset) + "\n");
-		writer.write("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights) + "\n");
-		writer.write("minimapLockNorth " + Boolean.toString(minimapLockNorth) + "\n");
-		writer.write("minimapShape " + Integer.toString(minimapShape) + "\n");
-		writer.write("minimapTiltAngle " + Double.toString(minimapTiltAngle) + "\n");
-		writer.write("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange) + "\n");
-		writer.write("minimapFlatIce " + Boolean.toString(minimapFlatIce) + "\n");
-		writer.write("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers) + "\n");
-	writer.write("minimapSize " + Integer.toString(minimapSize) + "\n");
-	writer.write("minimapZoom " + Double.toString(minimapZoom) + "\n");
-	writer.write("minimapPlayerIndicatorSize " + Double.toString(minimapPlayerIndicatorSize) + "\n");
-	writer.write("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize) + "\n");
-	writer.write("minimapShowOtherPlayersNames " + Boolean.toString(minimapShowOtherPlayersNames) + "\n");
-	writer.write("minimapOtherPlayersNameSize " + Double.toString(minimapOtherPlayersNameSize) + "\n");
-	writer.write("minimapLimitPlayersToBounds " + Boolean.toString(minimapLimitPlayersToBounds) + "\n");
-	writer.write("minimapShowSpeedComparison " + Boolean.toString(minimapShowSpeedComparison) + "\n");
-			// writer.write("minimapSquare " + Boolean.toString(minimapSquare) + "\n");
-			// writer.write("showSpeedBar " + Boolean.toString(showSpeedBar) + "\n");
+			writer.write(toPropertiesString());
 			writer.close();
 		}
 		catch (Exception ignored) {
+		}
+	}
+
+	/** Serialises the current config into the properties text format used on disk. */
+	public static String toPropertiesString() {
+		StringWriter sw = new StringWriter();
+		java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+		pw.println("enabled " + Boolean.toString(enabled));
+		pw.println("extended " + Boolean.toString(extended));
+		pw.println("barType " + Integer.toString(barType));
+		pw.println("speedUnit " + Integer.toString(configSpeedType));
+		pw.println("minimapEnabled " + Boolean.toString(minimapEnabled));
+		pw.println("minimapX " + Integer.toString(minimapX));
+		pw.println("minimapY " + Integer.toString(minimapY));
+		pw.println("minimapYOffset " + Integer.toString(minimapYOffset));
+		pw.println("minimapShowAllHeights " + Boolean.toString(minimapShowAllHeights));
+		pw.println("minimapLockNorth " + Boolean.toString(minimapLockNorth));
+		pw.println("minimapShape " + Integer.toString(minimapShape));
+		pw.println("minimapTiltAngle " + Double.toString(minimapTiltAngle));
+		pw.println("minimapIceDetectionRange " + Integer.toString(minimapIceDetectionRange));
+		pw.println("minimapFlatIce " + Boolean.toString(minimapFlatIce));
+		pw.println("minimapShowOtherPlayers " + Boolean.toString(minimapShowOtherPlayers));
+		pw.println("minimapSize " + Integer.toString(minimapSize));
+		pw.println("minimapBorderSize " + Double.toString(minimapBorderSize));
+		pw.println("minimapZoom " + Double.toString(minimapZoom));
+		pw.println("minimapPlayerIndicatorSize " + Double.toString(minimapPlayerIndicatorSize));
+		pw.println("minimapPlayerIndicatorBorderSize " + Double.toString(minimapPlayerIndicatorBorderSize));
+		pw.println("minimapOtherPlayersIndicatorSize " + Double.toString(minimapOtherPlayersIndicatorSize));
+		pw.println("minimapOtherPlayersHeadSize " + Double.toString(minimapOtherPlayersHeadSize));
+		pw.println("minimapOtherPlayersHeadFrameSize " + Double.toString(minimapOtherPlayersHeadFrameSize));
+		pw.println("minimapShowOtherPlayersNames " + Boolean.toString(minimapShowOtherPlayersNames));
+		pw.println("minimapOtherPlayersNameSize " + Double.toString(minimapOtherPlayersNameSize));
+		pw.println("minimapOtherPlayersNameOffsetX " + Double.toString(minimapOtherPlayersNameOffsetX));
+		pw.println("minimapOtherPlayersNameOffsetY " + Double.toString(minimapOtherPlayersNameOffsetY));
+		pw.println("minimapSpectatorLabel " + Boolean.toString(minimapSpectatorLabel));
+		pw.println("minimapLimitPlayersToBounds " + Boolean.toString(minimapLimitPlayersToBounds));
+		pw.close();
+		return sw.toString();
+	}
+
+	/** Copies the current config to the system clipboard. Returns true on success. */
+	public static boolean exportToClipboard() {
+		try {
+			MinecraftClient.getInstance().keyboard.setClipboard(toPropertiesString());
+			return true;
+		}
+		catch (Exception e) {
+			return false;
+		}
+	}
+
+	/** Reads config text from the system clipboard, applies it and saves to disk. Returns true on success. */
+	public static boolean importFromClipboard() {
+		String text = MinecraftClient.getInstance().keyboard.getClipboard();
+		if(text == null || text.isBlank()) {
+			return false;
+		}
+		try {
+			Properties prop = new Properties();
+			prop.load(new StringReader(text));
+			if(!prop.containsKey("enabled") && !prop.containsKey("minimapEnabled")) {
+				return false; // Not a boathud config
+			}
+			applyProperties(prop);
+			save();
+			return true;
+		}
+		catch (Exception e) {
+			return false;
 		}
 	}
 
