@@ -9,7 +9,6 @@ import hibi.boathud.Common;
 import hibi.boathud.Config;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.render.RenderTickCounter;
 
 @Mixin(InGameHud.class)
@@ -28,10 +27,11 @@ public class InGameHudMixin {
 		if(common == null) return;
 		
 		// Render main HUD if enabled and riding boat
-		if(Config.enabled && common.isRidingBoat() && !(common.getClient().currentScreen instanceof ChatScreen)) {
+		// (stays visible while the chat screen is open, same as the vanilla HUD)
+		if(Config.enabled && common.isRidingBoat()) {
 			common.getHudRenderer().render(graphics, counter);
-		} else if(Config.minimapEnabled && !(common.getClient().currentScreen instanceof ChatScreen)) {
-			// Render only minimap if enabled and not in chat screen
+		} else if(Config.minimapEnabled) {
+			// Render only minimap if enabled
 			common.getHudRenderer().renderMinimap(graphics);
 		}
 	}
