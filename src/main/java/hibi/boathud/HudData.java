@@ -21,12 +21,10 @@ public class HudData {
 	public boolean isDriver;
 
 	private double oldSpeed;
-	private final PlayerListEntry listEntry;
 
 	public HudData(){
 		MinecraftClient client = Common.getInstance().getClient();
 		this.name = client.player.getName().getString();
-		this.listEntry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
 	}
 
 	/** Updates the data. Assumes player is in a boat. Do not call unless you are absolutely sure the player is in a boat. */
@@ -45,7 +43,19 @@ public class HudData {
 
 		// Trivial miscellanea
 		this.g = (this.speed - this.oldSpeed) * 2.040816327d; // 20 tps / 9.8 m/s²
-		this.ping = this.listEntry.getLatency();
+		// The player's tab-list entry can be null during server-side client
+		// verification (e.g. Sonar) on multiplayer servers, so re-fetch every tick
+		// and guard both the missing entry and any internal nulls.
+		PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
+		int ping = 0;
+		if (entry != null) {
+			try {
+				ping = entry.getLatency();
+			} catch (NullPointerException ignore) {
+				ping = 0;
+			}
+		}
+		this.ping = ping;
 		this.isDriver = boat.getControllingPassenger() == client.player;
 	}
 }
