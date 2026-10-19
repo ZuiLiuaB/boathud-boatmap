@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        // Domestic mirror first (preferred); falls back to official if unreachable.
+        maven {
+            name = 'BMCLAPI'
+            url = 'https://bmclapi2.bangbang93.com/maven'
+        }
+        maven {
+            name = 'Quilt'
+            url = 'https://maven.quiltmc.org/repository/release'
+        }
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+    }
+}

@@ -1,0 +1,45 @@
+{
+    "schemaVersion": 1,
+    "id": "boathud",
+    "version": "${version}",
+
+    "name": "Boathud and Map",
+    "description": "This mod adds a racing style HUD and Map, configurable, for riding a boat, and is designed mostly for racing boats on ice.",
+    "authors": [
+        "hibi",
+        "ZuiLiu_ab"
+    ],
+    "contact": {
+        "homepage": "https://github.com/hibiii/BoatHud",
+        "sources": "https://github.com/ZuiLiuaB/boathud-boatmap",
+        "issues": "https://github.com/ZuiLiuaB/boathud-boatmap/issues"
+    },
+
+    "license": "Unlicense",
+    "icon": "assets/boathud/icon.png",
+
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "hibi.boathud.Common"
+        ],
+        "modmenu": [
+            "hibi.boathud.MenuInteg"
+        ]
+    },
+    "mixins": [
+        "boathud.mixins.json"
+    ],
+    "depends": {
+        "fabric-api": "*",
+        "minecraft": ">=26.2",
+        "cloth-config2": ">=26.2.0"
+    },
+    "custom": {
+        "modmenu": {
+            "links": {
+                "modmenu.github_releases": "https://github.com/ZuiLiuaB/boathud-boatmap/releases"
+            }
+        }
+    }
+}

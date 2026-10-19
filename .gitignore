@@ -1,0 +1,35 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+
+# eclipse
+*.launch
+
+# idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+.settings/
+.vscode/
+bin/
+.classpath
+.project
+
+# macos
+*.DS_Store
+
+# fabric
+run/
+
+# local agent workspace, build logs, one-off inspection scripts
+.workbuddy/
+build_errors.txt
+build_log.txt
+inspect_jar.py
+hs_err_pid*.log
+replay_pid*.log
